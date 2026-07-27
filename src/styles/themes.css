@@ -20,11 +20,14 @@
   --color-placeholder-text: #9a9a94;
 
   /* Hero network animation. Bare R,G,B triplets because the canvas composes
-     its own alpha per frame. Daylight diagram: deep greens on cream, with a
-     soft sage wash toward the right edge. */
-  --net-line: 45, 106, 79;
-  --net-node: 27, 67, 50;
-  --net-glow: 82, 183, 136;
+     its own alpha per frame. Daylight diagram: fresh jade rather than dark
+     forest, because near-black dots on cream read as specks, and a halo needs
+     pigment (not lightness) to show on a light page. --net-halo is a strength
+     multiplier: light backgrounds need more of it. */
+  --net-line: 58, 138, 100;
+  --net-node: 41, 127, 91;
+  --net-glow: 47, 138, 99;
+  --net-halo: 1.7;
   /* Wash disabled while we look at the network on bare page colour.
      Restore with: rgba(45, 106, 79, 0.14) */
   --hero-tint: transparent;
@@ -51,10 +54,12 @@
   --color-placeholder-bg: #2a2a28;
   --color-placeholder-text: #6a6a65;
 
-  /* Night sky: pale mint threads on near-black, deep forest wash right. */
+  /* Night sky: pale mint threads on near-black. Nodes emit here, so the halo
+     needs far less push than on cream. */
   --net-line: 176, 224, 197;
   --net-node: 216, 240, 226;
   --net-glow: 116, 198, 157;
+  --net-halo: 1;
   /* Restore with: rgba(27, 67, 50, 0.5) */
   --hero-tint: transparent;
 }

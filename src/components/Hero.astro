@@ -107,7 +107,7 @@ const links = [
 
     const CONNECT_R = 150;      // px within which a thread forms
     const MARGIN = 80;          // wrap margin so nodes never pop at the edges
-    const LINE_MAX = 0.3;       // steady-state thread opacity at zero distance
+    const LINE_MAX = 0.42;      // steady-state thread opacity at zero distance
     const FLASH_BOOST = 0.5;    // extra thread opacity at the connection moment
     const GLOW_DECAY = 2.4;     // 1/s, endpoint bloom fade
     const FLASH_LIFE = 1.4;     // s, how long a connection event lingers
@@ -129,6 +129,7 @@ const links = [
     // Palette comes from the theme tokens as bare R,G,B triplets; the canvas
     // composes its own alpha per frame.
     let colors = { line: '', node: '', glow: '' };
+    let halo = 1;
     let glowSprite = document.createElement('canvas');
 
     const readTheme = () => {
@@ -138,6 +139,7 @@ const links = [
         node: s.getPropertyValue('--net-node').trim(),
         glow: s.getPropertyValue('--net-glow').trim(),
       };
+      halo = parseFloat(s.getPropertyValue('--net-halo')) || 1;
       // Pre-render the halo once per theme: a radial falloff drawn per node
       // per frame would burn the frame budget for an identical result.
       glowSprite = document.createElement('canvas');
@@ -251,11 +253,13 @@ const links = [
       for (const n of nodes) {
         const breath = 0.5 + 0.5 * Math.sin(t * 0.45 + n.phase);
         const haloR = 14 + 4 * breath + 14 * n.glow;
-        ctx.globalAlpha = 0.1 + 0.06 * breath + 0.5 * n.glow;
+        ctx.globalAlpha = Math.min(1, (0.1 + 0.06 * breath + 0.5 * n.glow) * halo);
         ctx.drawImage(glowSprite, n.x - haloR, n.y - haloR, haloR * 2, haloR * 2);
         ctx.globalAlpha = 1;
 
-        ctx.fillStyle = `rgba(${colors.node}, ${0.5 + 0.4 * breath})`;
+        // Kept translucent so nodes sit in the field rather than punching
+        // through it. Opaque cores read as specks on a light background.
+        ctx.fillStyle = `rgba(${colors.node}, ${0.3 + 0.28 * breath + 0.3 * n.glow})`;
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.r + n.glow * 0.9, 0, Math.PI * 2);
         ctx.fill();
