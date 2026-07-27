@@ -65,6 +65,17 @@ const ogImage = new URL('/og.png', Astro.site);
     </script>
   </head>
   <body>
+    {/*
+      Absolute rather than fixed, so it scrolls away with the hero.
+      Both icons are rendered and CSS picks one off [data-theme], which the
+      inline head script sets before first paint. That avoids the flash a
+      JS-swapped icon would give.
+    */}
+    <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle light and dark theme">
+      <span class="theme-toggle__icon theme-toggle__icon--light" aria-hidden="true">☀️</span>
+      <span class="theme-toggle__icon theme-toggle__icon--dark" aria-hidden="true">🌙</span>
+    </button>
+
     <slot />
     <script>
       const observer = new IntersectionObserver(
@@ -81,6 +92,25 @@ const ogImage = new URL('/og.png', Astro.site);
 
       document.querySelectorAll('[data-reveal]').forEach((el) => observer.observe(el));
     </script>
+    <script>
+      // Nothing is written to storage until the button is actually clicked, so
+      // an untouched visitor keeps following their OS setting, including when
+      // it changes mid-visit.
+      const STORAGE_KEY = 'theme';
+      const root = document.documentElement;
+      const system = window.matchMedia('(prefers-color-scheme: dark)');
+
+      document.querySelector('[data-theme-toggle]')?.addEventListener('click', () => {
+        const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        localStorage.setItem(STORAGE_KEY, next);
+      });
+
+      system.addEventListener('change', (e) => {
+        if (localStorage.getItem(STORAGE_KEY)) return; // an explicit choice wins
+        root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      });
+    </script>
     <footer class="site-footer">
       <div class="site-footer__inner">
         <p>&copy; {new Date().getFullYear()} Sara Javanmardi. All rights reserved.</p>
@@ -90,6 +120,38 @@ const ogImage = new URL('/og.png', Astro.site);
 </html>
 
 <style>
+  .theme-toggle {
+    position: absolute;
+    top: var(--space-md);
+    right: var(--space-md);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.15rem;
+    line-height: 1;
+    border-radius: var(--radius-full);
+    /* The hero artwork behind this is dark, so the chip needs its own contrast
+       rather than relying on the page background. */
+    background-color: color-mix(in srgb, var(--color-bg) 55%, transparent);
+    backdrop-filter: blur(6px);
+    border: 1px solid color-mix(in srgb, var(--color-border-strong) 60%, transparent);
+    transition: background-color var(--transition-fast), transform var(--transition-fast);
+  }
+
+  .theme-toggle:hover {
+    background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
+    transform: scale(1.06);
+  }
+
+  /* data-theme is set before first paint, so the right icon is there immediately */
+  :root[data-theme='light'] .theme-toggle__icon--dark,
+  :root[data-theme='dark'] .theme-toggle__icon--light {
+    display: none;
+  }
+
   .site-footer {
     padding: var(--space-md) var(--space-md) var(--space-lg);
   }
