@@ -9,10 +9,16 @@ const logoMap: Record<string, ImageMetadata> = {
   microsoft: microsoftLogo,
 };
 
+// Durations are computed from the start and end months below rather than
+// hardcoded, so they cannot silently go stale. They are evaluated at build
+// time, so a rebuild refreshes them: on Cloudflare Pages that happens on every
+// push, and a scheduled deploy would keep them exact if that ever matters.
+
 type Role = {
   title: string;
-  dates: string;
-  duration: string;
+  /** 'YYYY-MM'. Omit `end` for a role still held. */
+  start: string;
+  end?: string;
   /** One short line, not a paragraph. LinkedIn carries the long version. */
   focus?: string;
 };
@@ -20,42 +26,83 @@ type Role = {
 type Company = {
   company: string;
   logoKey: string;
-  tenure: string;
   location: string;
   roles: Role[];
+};
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const parseMonth = (value: string) => {
+  const [year, month] = value.split('-').map(Number);
+  return { year, month };
+};
+
+const formatMonth = (value: string) => {
+  const { year, month } = parseMonth(value);
+  return `${MONTH_NAMES[month - 1]} ${year}`;
+};
+
+const now = new Date();
+const today = { year: now.getFullYear(), month: now.getMonth() + 1 };
+
+const monthsBetween = (from: string, to?: string) => {
+  const a = parseMonth(from);
+  const b = to ? parseMonth(to) : today;
+  return (b.year - a.year) * 12 + (b.month - a.month);
+};
+
+/** 27 -> "2 yrs 3 mos", matching the way LinkedIn phrases tenure. */
+const humanizeMonths = (total: number) => {
+  const years = Math.floor(total / 12);
+  const months = total % 12;
+  const parts: string[] = [];
+  if (years) parts.push(`${years} ${years === 1 ? 'yr' : 'yrs'}`);
+  if (months) parts.push(`${months} ${months === 1 ? 'mo' : 'mos'}`);
+  return parts.join(' ') || '<1 mo';
+};
+
+const roleDates = (role: Role) =>
+  `${formatMonth(role.start)} – ${role.end ? formatMonth(role.end) : 'Present'}`;
+
+/** Earliest start to latest end across all roles at a company. */
+const companyTenure = (company: Company) => {
+  const earliest = company.roles.reduce((a, r) => (r.start < a ? r.start : a), company.roles[0].start);
+  const stillThere = company.roles.some((r) => !r.end);
+  const latest = stillThere
+    ? undefined
+    : company.roles.reduce((a, r) => (r.end && r.end > a ? r.end : a), company.roles[0].end!);
+  return humanizeMonths(monthsBetween(earliest, latest));
 };
 
 const companies: Company[] = [
   {
     company: 'Google',
     logoKey: 'google',
-    tenure: '12 yrs 6 mos',
     location: 'Mountain View, CA',
     roles: [
       {
         title: 'Principal Engineer',
-        dates: 'Apr 2024 – Present',
-        duration: '2 yrs 3 mos',
+        start: '2024-04',
         // DRAFT: describes what the level generally entails, not confirmed
         // detail about Sara's current charter. Have her sign off on this line.
-        focus: 'Technical direction for ranking and machine learning across multiple teams',
+        focus: 'Google DeepMind: technical direction for ranking and machine learning',
       },
       {
         title: 'Senior Staff Software Engineer',
-        dates: 'Oct 2021 – Apr 2024',
-        duration: '2 yrs 7 mos',
+        start: '2021-10',
+        end: '2024-04',
         focus: 'Google Brain: machine learning for Search and Ads',
       },
       {
         title: 'Staff Software Engineer',
-        dates: 'Apr 2018 – Oct 2021',
-        duration: '3 yrs 7 mos',
+        start: '2018-04',
+        end: '2021-10',
         focus: 'Technical lead for Fresh Autocomplete and misinformation handling',
       },
       {
         title: 'Senior Software Engineer, Technical Lead',
-        dates: 'Apr 2015 – Mar 2018',
-        duration: '3 yrs',
+        start: '2015-04',
+        end: '2018-03',
         focus: 'Autocomplete infrastructure and ranking',
       },
     ],
@@ -63,13 +110,12 @@ const companies: Company[] = [
   {
     company: 'Microsoft',
     logoKey: 'microsoft',
-    tenure: '2 yrs 4 mos',
     location: 'Bellevue, WA',
     roles: [
       {
         title: 'Software Engineer II (RSDE)',
-        dates: 'Sep 2011 – Dec 2013',
-        duration: '2 yrs 4 mos',
+        start: '2011-09',
+        end: '2013-12',
         focus: 'Bing relevance: core ranking and personalization',
       },
     ],
@@ -100,7 +146,7 @@ const companies: Company[] = [
               height={36}
             />
             <h3 class="timeline__co-name">{co.company}</h3>
-            <span class="timeline__co-meta">{co.tenure} · {co.location}</span>
+            <span class="timeline__co-meta">{companyTenure(co)} · {co.location}</span>
           </div>
 
           <ol class="roles">
@@ -111,8 +157,8 @@ const companies: Company[] = [
                   {role.focus && <p class="role__focus">{role.focus}</p>}
                 </div>
                 <p class="role__dates">
-                  {role.dates}
-                  <span class="role__duration">{role.duration}</span>
+                  {roleDates(role)}
+                  <span class="role__duration">{humanizeMonths(monthsBetween(role.start, role.end))}</span>
                 </p>
               </li>
             ))}
