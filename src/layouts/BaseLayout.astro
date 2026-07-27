@@ -1,0 +1,107 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Sara Javanmardi',
+  description = 'Sara Javanmardi is a Principal Engineer at Google, building Search infrastructure, ranking, and ML systems at scale.',
+} = Astro.props;
+
+// Absolute URLs, which social crawlers require. Astro.site comes from
+// astro.config.mjs, so these follow the domain automatically.
+const canonical = new URL(Astro.url.pathname, Astro.site);
+
+// TODO: add public/og.png at exactly 1200x630. The tags below are wired and
+// correct, but until that file exists shared links render with no preview
+// image. Crawlers do not accept SVG here, so it has to be a PNG or JPG.
+const ogImage = new URL('/og.png', Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Open Graph: Facebook, LinkedIn, Slack, iMessage -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sara Javanmardi" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Sara Javanmardi, Principal Engineer at Google" />
+
+    <!-- Twitter/X reads these instead of og: for card layout -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <title>{title}</title>
+    <script is:inline>
+      (function () {
+        const STORAGE_KEY = 'theme';
+        const stored = localStorage.getItem(STORAGE_KEY);
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = stored === 'light' || stored === 'dark' ? stored : prefersDark ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+      })();
+    </script>
+  </head>
+  <body>
+    <slot />
+    <script>
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.1, rootMargin: '0px 0px -60px 0px' }
+      );
+
+      document.querySelectorAll('[data-reveal]').forEach((el) => observer.observe(el));
+    </script>
+    <footer class="site-footer">
+      <div class="site-footer__inner">
+        <p>&copy; {new Date().getFullYear()} Sara Javanmardi. All rights reserved.</p>
+      </div>
+    </footer>
+  </body>
+</html>
+
+<style>
+  .site-footer {
+    padding: var(--space-md) var(--space-md) var(--space-lg);
+  }
+
+  .site-footer__inner {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  .site-footer p {
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+  }
+</style>

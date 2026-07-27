@@ -1,0 +1,229 @@
+---
+const email = 'sarah.javanmardi@gmail.com';
+const linkedin = 'https://www.linkedin.com/in/sarajavanmardi/';
+---
+
+<section class="section contact" id="contact">
+  <div class="section__inner contact__inner">
+    <header class="section__header" data-reveal>
+      <span class="section__label">Contact</span>
+      <h2 class="section__title">Get in touch</h2>
+      <p class="section__subtitle">
+        For advisory work, speaking, or press. If you'd rather just talk,
+        <button type="button" class="contact__inline-btn" data-coffee-open>book a coffee</button>.
+      </p>
+    </header>
+
+    <form class="contact__form" data-contact-form novalidate data-reveal data-reveal-delay="1">
+      <div class="contact__row">
+        <div class="field">
+          <label class="field__label" for="cf-name">Name</label>
+          <input class="field__input" id="cf-name" name="name" type="text" required autocomplete="name" />
+        </div>
+        <div class="field">
+          <label class="field__label" for="cf-email">Email</label>
+          <input class="field__input" id="cf-email" name="email" type="email" required autocomplete="email" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="cf-subject">Subject</label>
+        <input class="field__input" id="cf-subject" name="subject" type="text" required />
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="cf-message">Message</label>
+        <textarea class="field__input field__input--area" id="cf-message" name="message" rows="6" required></textarea>
+      </div>
+
+      <div class="contact__submit">
+        <button type="submit" class="btn btn--primary">Send message</button>
+        <p class="contact__hint" data-form-hint>
+          Opens your email client with the message ready to send.
+        </p>
+      </div>
+    </form>
+
+    <p class="contact__alt" data-reveal data-reveal-delay="2">
+      Or reach me directly at <a href={`mailto:${email}`}>{email}</a> ·
+      <a href={linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
+    </p>
+  </div>
+</section>
+
+<script define:vars={{ email }}>
+  // No backend on a static host, so the form composes a mailto: rather than
+  // POSTing. Swap this handler for a fetch() to Formspree or a Pages Function
+  // if real server-side delivery is wanted later.
+  const form = document.querySelector('[data-contact-form]');
+
+  if (form) {
+    const hint = form.querySelector('[data-form-hint]');
+
+    const setError = (field, message) => {
+      const wrap = field.closest('.field');
+      wrap.classList.toggle('field--error', Boolean(message));
+      let el = wrap.querySelector('.field__error');
+      if (message) {
+        if (!el) {
+          el = document.createElement('p');
+          el.className = 'field__error';
+          wrap.appendChild(el);
+        }
+        el.textContent = message;
+      } else if (el) {
+        el.remove();
+      }
+    };
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const name = form.elements.name;
+      const from = form.elements.email;
+      const subject = form.elements.subject;
+      const message = form.elements.message;
+
+      // Validate before handing off, since a malformed mailto fails silently in
+      // some clients, which would look like the form just did nothing.
+      let firstBad = null;
+      const checks = [
+        [name, name.value.trim() ? '' : 'Please add your name.'],
+        [
+          from,
+          !from.value.trim()
+            ? 'Please add your email.'
+            : from.checkValidity()
+              ? ''
+              : 'That email address looks incomplete.',
+        ],
+        [subject, subject.value.trim() ? '' : 'Please add a subject.'],
+        [message, message.value.trim() ? '' : 'Please add a message.'],
+      ];
+
+      checks.forEach(([field, error]) => {
+        setError(field, error);
+        if (error && !firstBad) firstBad = field;
+      });
+
+      if (firstBad) {
+        firstBad.focus();
+        return;
+      }
+
+      const body = `${message.value.trim()}\n\n${name.value.trim()}\n${from.value.trim()}`;
+      const href =
+        `mailto:${email}` +
+        `?subject=${encodeURIComponent(subject.value.trim())}` +
+        `&body=${encodeURIComponent(body)}`;
+
+      window.location.href = href;
+      hint.textContent = 'Your email client should have opened with the message ready.';
+    });
+  }
+</script>
+
+<style>
+  .contact__inner {
+    max-width: 44rem;
+  }
+
+  .contact__inline-btn {
+    color: var(--color-accent);
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .contact__inline-btn:hover {
+    color: var(--color-accent-hover);
+  }
+
+  .contact__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .contact__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+
+  .field__label {
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+
+  .field__input {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    transition: border-color var(--transition-fast);
+  }
+
+  .field__input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .field__input--area {
+    resize: vertical;
+    min-height: 8rem;
+  }
+
+  .field--error .field__input {
+    border-color: #c0392b;
+  }
+
+  .field__error {
+    font-size: var(--text-xs);
+    color: #c0392b;
+  }
+
+  .contact__submit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-sm) var(--space-md);
+  }
+
+  .contact__hint {
+    font-size: var(--text-xs);
+    color: var(--color-text-subtle);
+  }
+
+  .contact__alt {
+    margin-top: var(--space-lg);
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+  }
+
+  .contact__alt a {
+    color: var(--color-accent);
+  }
+
+  .contact__alt a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 560px) {
+    .contact__row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

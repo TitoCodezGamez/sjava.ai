@@ -1,0 +1,133 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import uciLogo from '../assets/logos/uci-logo.png';
+import sharifLogo from '../assets/logos/sharif-logo.svg';
+
+const logoMap: Record<string, ImageMetadata> = {
+  uci: uciLogo,
+  sharif: sharifLogo,
+};
+
+const schools = [
+  {
+    institution: 'UC Irvine',
+    degree: 'PhD, Computer Science',
+    year: '2006 – 2011',
+    details: [
+      'Research Assistant, Donald Bren School of ICS',
+      'Teaching Assistant, Information Retrieval (Graduate Course)',
+      'Summer Researcher, University of Washington (2010)',
+      'Research Intern, Microsoft Research: NLP for Bing Relevance (2009)',
+      'Research Intern, Microsoft Research: NLP applications (2008)',
+    ],
+    logoKey: 'uci',
+  },
+  {
+    institution: 'Sharif University of Technology',
+    degree: 'B.S., Software Engineering',
+    year: '2006',
+    details: [],
+    logoKey: 'sharif',
+  },
+];
+---
+
+<section class="section education" id="education">
+  <div class="section__inner">
+    <header class="section__header" data-reveal>
+      <span class="section__label">Education</span>
+      <h2 class="section__title">Academic background</h2>
+      <p class="section__subtitle">
+        PhD in Computer Science from UC Irvine, with a background in software engineering from Sharif University of Technology.
+      </p>
+    </header>
+
+    <ul class="education__list">
+      {schools.map((school, i) => (
+        <li class="education__item" data-reveal data-reveal-delay={String(i + 1)}>
+          <Image
+            src={logoMap[school.logoKey]}
+            alt={`${school.institution} logo`}
+            class="education__logo"
+            width={64}
+            height={64}
+          />
+          <div class="education__body">
+            <h3 class="education__institution">{school.institution}</h3>
+            <p class="education__degree">{school.degree}</p>
+            <p class="education__year">{school.year}</p>
+            {school.details.length > 0 && (
+              <ul class="education__details">
+                {school.details.map((d) => <li>{d}</li>)}
+              </ul>
+            )}
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  .education__list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+  }
+
+  .education__item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background-color: var(--color-surface-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .education__logo {
+    flex-shrink: 0;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+    background-color: var(--color-surface-elevated);
+    object-fit: contain;
+  }
+
+  .education__body {
+    min-width: 0;
+  }
+
+  .education__institution {
+    font-family: var(--font-body);
+    font-size: var(--text-lg);
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+  }
+
+  .education__degree {
+    font-size: var(--text-base);
+    color: var(--color-text-muted);
+    margin-bottom: 0.15rem;
+  }
+
+  .education__year {
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+    margin-bottom: var(--space-sm);
+  }
+
+  .education__details {
+    list-style: disc;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .education__details li {
+    font-size: var(--text-base);
+    color: var(--color-text-muted);
+    line-height: 1.55;
+  }
+</style>

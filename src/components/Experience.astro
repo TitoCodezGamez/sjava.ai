@@ -1,0 +1,233 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import googleLogo from '../assets/logos/google-logo.svg';
+import microsoftLogo from '../assets/logos/microsoft-logo.svg';
+
+const logoMap: Record<string, ImageMetadata> = {
+  google: googleLogo,
+  microsoft: microsoftLogo,
+};
+
+type Role = {
+  title: string;
+  dates: string;
+  duration: string;
+  /** One short line, not a paragraph. LinkedIn carries the long version. */
+  focus?: string;
+};
+
+type Company = {
+  company: string;
+  logoKey: string;
+  tenure: string;
+  location: string;
+  roles: Role[];
+};
+
+const companies: Company[] = [
+  {
+    company: 'Google',
+    logoKey: 'google',
+    tenure: '12 yrs 6 mos',
+    location: 'Mountain View, CA',
+    roles: [
+      {
+        title: 'Principal Engineer',
+        dates: 'Apr 2024 – Present',
+        duration: '2 yrs 3 mos',
+        // DRAFT: describes what the level generally entails, not confirmed
+        // detail about Sara's current charter. Have her sign off on this line.
+        focus: 'Setting technical direction for ranking and ML work that spans multiple teams',
+      },
+      {
+        title: 'Senior Staff Software Engineer',
+        dates: 'Oct 2021 – Apr 2024',
+        duration: '2 yrs 7 mos',
+        focus: 'Google Brain: ML for Search and Ads',
+      },
+      {
+        title: 'Staff Software Engineer',
+        dates: 'Apr 2018 – Oct 2021',
+        duration: '3 yrs 7 mos',
+        focus: 'Tech lead, Fresh Autocomplete and misinformation handling',
+      },
+      {
+        title: 'Senior Software Engineer, Technical Lead',
+        dates: 'Apr 2015 – Mar 2018',
+        duration: '3 yrs',
+        focus: 'Autocomplete infrastructure and ranking',
+      },
+    ],
+  },
+  {
+    company: 'Microsoft',
+    logoKey: 'microsoft',
+    tenure: '2 yrs 4 mos',
+    location: 'Bellevue, WA',
+    roles: [
+      {
+        title: 'Software Engineer II (RSDE)',
+        dates: 'Sep 2011 – Dec 2013',
+        duration: '2 yrs 4 mos',
+        focus: 'Bing relevance: core ranking and personalization',
+      },
+    ],
+  },
+];
+---
+
+<section class="section experience" id="experience">
+  <div class="section__inner">
+    <header class="section__header" data-reveal>
+      <span class="section__label">Experience</span>
+      <h2 class="section__title">Career timeline</h2>
+      <p class="section__subtitle">
+        Over a decade at Google building search infrastructure, ML systems, and
+        autocomplete at massive scale.
+      </p>
+    </header>
+
+    <ol class="timeline">
+      {companies.map((co, i) => (
+        <li class="timeline__co" data-reveal data-reveal-delay={String(i + 1)}>
+          <div class="timeline__co-header">
+            <Image
+              src={logoMap[co.logoKey]}
+              alt={`${co.company} logo`}
+              class="timeline__logo"
+              width={36}
+              height={36}
+            />
+            <h3 class="timeline__co-name">{co.company}</h3>
+            <span class="timeline__co-meta">{co.tenure} · {co.location}</span>
+          </div>
+
+          <ol class="roles">
+            {co.roles.map((role) => (
+              <li class="role">
+                <div class="role__main">
+                  <h4 class="role__title">{role.title}</h4>
+                  {role.focus && <p class="role__focus">{role.focus}</p>}
+                </div>
+                <p class="role__dates">
+                  {role.dates}
+                  <span class="role__duration">{role.duration}</span>
+                </p>
+              </li>
+            ))}
+          </ol>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  /* ── Company ── */
+  .timeline__co-header {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding-bottom: var(--space-xs);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-xs);
+  }
+
+  .timeline__logo {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    object-fit: contain;
+  }
+
+  .timeline__co-name {
+    font-family: var(--font-body);
+    font-size: var(--text-lg);
+    font-weight: 600;
+  }
+
+  .timeline__co-meta {
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+    margin-left: auto;
+    text-align: right;
+  }
+
+  /* ── Roles: one compact row each ── */
+  .role {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .role:last-child {
+    border-bottom: none;
+  }
+
+  .role__main {
+    min-width: 0;
+  }
+
+  .role__title {
+    font-family: var(--font-body);
+    font-size: var(--text-base);
+    font-weight: 600;
+    line-height: 1.35;
+  }
+
+  .role__focus {
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+    line-height: 1.45;
+  }
+
+  .role__dates {
+    flex-shrink: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .role__duration {
+    display: block;
+    font-size: var(--text-xs);
+    opacity: 0.8;
+  }
+
+  @media (max-width: 640px) {
+    .timeline__co-header {
+      flex-wrap: wrap;
+    }
+
+    .timeline__co-meta {
+      margin-left: 0;
+      flex-basis: 100%;
+      text-align: left;
+    }
+
+    .role {
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .role__dates {
+      text-align: left;
+    }
+
+    .role__duration {
+      display: inline;
+      margin-left: 0.4rem;
+    }
+  }
+</style>

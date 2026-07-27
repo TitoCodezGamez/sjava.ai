@@ -1,0 +1,604 @@
+---
+const email = 'sarah.javanmardi@gmail.com';
+---
+
+<dialog class="coffee" id="coffee-modal" data-email={email} aria-labelledby="coffee-title">
+  <div class="coffee__head">
+    <div>
+      <h2 class="coffee__title" id="coffee-title">Book a coffee</h2>
+      <p class="coffee__sub">30 minutes · times shown in Pacific Time</p>
+    </div>
+    <button type="button" class="coffee__close" data-close aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 4l8 8M12 4l-8 8" />
+      </svg>
+    </button>
+  </div>
+
+  <div class="coffee__body">
+    <!-- Left: month calendar -->
+    <section class="coffee__cal" aria-label="Choose a date">
+      <div class="coffee__cal-head">
+        <button type="button" class="coffee__nav" data-prev aria-label="Previous month">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3L5 8l5 5" /></svg>
+        </button>
+        <p class="coffee__month" data-month aria-live="polite"></p>
+        <button type="button" class="coffee__nav" data-next aria-label="Next month">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5" /></svg>
+        </button>
+      </div>
+
+      <div class="coffee__dow" aria-hidden="true">
+        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+      </div>
+
+      <div class="coffee__grid" data-grid role="grid"></div>
+
+      <p class="coffee__legend"><span class="coffee__legend-dot" aria-hidden="true"></span> times available</p>
+    </section>
+
+    <!-- Right: times for the selected date -->
+    <section class="coffee__slots" aria-label="Choose a time">
+      <p class="coffee__slots-head" data-slots-head>Pick a date to see times</p>
+      <div class="coffee__times" data-times></div>
+      <div class="coffee__confirm" data-confirm hidden></div>
+    </section>
+  </div>
+</dialog>
+
+<script>
+  // Classic 9–5: half-hour chats on the hour, 9am–4pm, weekdays only. Slots are
+  // anchored to Pacific Time (where Sara is), not the visitor's clock, so a
+  // booking made from London still lands inside her working day.
+  const TIME_ZONE = 'America/Los_Angeles';
+  const TZ_LABEL = 'PT';
+  const SLOT_HOURS = [9, 10, 11, 12, 13, 14, 15, 16];
+  const DURATION_MIN = 30;
+  const HORIZON_DAYS = 60; // how far ahead bookings are offered
+
+  const dialog = document.getElementById('coffee-modal') as HTMLDialogElement | null;
+
+  if (dialog) {
+    const email = dialog.dataset.email || '';
+    const gridEl = dialog.querySelector<HTMLElement>('[data-grid]')!;
+    const monthEl = dialog.querySelector<HTMLElement>('[data-month]')!;
+    const timesEl = dialog.querySelector<HTMLElement>('[data-times]')!;
+    const slotsHeadEl = dialog.querySelector<HTMLElement>('[data-slots-head]')!;
+    const confirmEl = dialog.querySelector<HTMLElement>('[data-confirm]')!;
+    const prevBtn = dialog.querySelector<HTMLButtonElement>('[data-prev]')!;
+    const nextBtn = dialog.querySelector<HTMLButtonElement>('[data-next]')!;
+
+    // ── Time zone helpers ──────────────────────────────────────────────────
+    /** Milliseconds to add to a Pacific wall-clock-as-UTC value to get true UTC. */
+    const tzOffsetMs = (date: Date) => {
+      const p = new Intl.DateTimeFormat('en-US', {
+        timeZone: TIME_ZONE,
+        hour12: false,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+        .formatToParts(date)
+        .reduce<Record<string, string>>((a, x) => {
+          if (x.type !== 'literal') a[x.type] = x.value;
+          return a;
+        }, {});
+      const asUTC = Date.UTC(
+        Number(p.year),
+        Number(p.month) - 1,
+        Number(p.day),
+        Number(p.hour) % 24,
+        Number(p.minute),
+        Number(p.second)
+      );
+      return date.getTime() - asUTC;
+    };
+
+    /** Pacific wall-clock Y/M/D H:M → the true UTC instant. */
+    const pacificToUtc = (y: number, m: number, d: number, hh: number, mm: number) => {
+      const guess = Date.UTC(y, m - 1, d, hh, mm);
+      const first = tzOffsetMs(new Date(guess));
+      let ts = guess + first;
+      // A slot sitting across a DST boundary needs one correction pass
+      const second = tzOffsetMs(new Date(ts));
+      if (second !== first) ts = guess + second;
+      return new Date(ts);
+    };
+
+    /** Today's date as seen in Pacific Time. */
+    const pacificToday = () => {
+      const [y, m, d] = new Intl.DateTimeFormat('en-CA', {
+        timeZone: TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      })
+        .format(new Date())
+        .split('-')
+        .map(Number);
+      return { y, m, d };
+    };
+
+    // ── Booking window ─────────────────────────────────────────────────────
+    const today = pacificToday();
+    const minUTC = Date.UTC(today.y, today.m - 1, today.d + 1); // from tomorrow
+    const maxUTC = Date.UTC(today.y, today.m - 1, today.d + HORIZON_DAYS);
+
+    const isAvailable = (utc: number) => {
+      if (utc < minUTC || utc > maxUTC) return false;
+      const dow = new Date(utc).getUTCDay();
+      return dow !== 0 && dow !== 6; // weekdays only
+    };
+
+    let viewY = today.y;
+    let viewM = today.m - 1; // 0-indexed month being displayed
+    let selectedUTC: number | null = null;
+    let selectedHour: number | null = null;
+
+    const fmtMonth = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
+      month: 'long',
+      year: 'numeric',
+    });
+    const fmtFull = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'UTC',
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const fmtHour = (h: number) => {
+      const suffix = h < 12 ? 'am' : 'pm';
+      return `${h % 12 === 0 ? 12 : h % 12}:00 ${suffix}`;
+    };
+
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const icsStamp = (d: Date) =>
+      `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T` +
+      `${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
+
+    // ── Calendar ───────────────────────────────────────────────────────────
+    function renderMonth() {
+      const monthStart = Date.UTC(viewY, viewM, 1);
+      monthEl.textContent = fmtMonth.format(new Date(monthStart));
+
+      // Disable nav that would leave the bookable range entirely
+      prevBtn.disabled = Date.UTC(viewY, viewM, 0) < minUTC;
+      nextBtn.disabled = Date.UTC(viewY, viewM + 1, 1) > maxUTC;
+
+      gridEl.innerHTML = '';
+
+      const startDow = new Date(monthStart).getUTCDay();
+      const daysInMonth = new Date(Date.UTC(viewY, viewM + 1, 0)).getUTCDate();
+
+      for (let i = 0; i < startDow; i++) {
+        const blank = document.createElement('span');
+        blank.className = 'coffee__day coffee__day--blank';
+        gridEl.appendChild(blank);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const utc = Date.UTC(viewY, viewM, day);
+        const open = isAvailable(utc);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'coffee__day';
+        btn.disabled = !open;
+        btn.setAttribute('aria-pressed', String(selectedUTC === utc));
+        btn.innerHTML =
+          `<span class="coffee__day-num">${day}</span>` +
+          (open ? '<span class="coffee__day-dot" aria-hidden="true"></span>' : '');
+
+        if (open) {
+          btn.setAttribute(
+            'aria-label',
+            `${fmtFull.format(new Date(utc))}, times available`
+          );
+          btn.addEventListener('click', () => {
+            selectedUTC = utc;
+            selectedHour = null;
+            gridEl
+              .querySelectorAll('.coffee__day')
+              .forEach((el) => el.setAttribute('aria-pressed', String(el === btn)));
+            confirmEl.hidden = true;
+            renderTimes();
+          });
+        }
+
+        gridEl.appendChild(btn);
+      }
+    }
+
+    function renderTimes() {
+      timesEl.innerHTML = '';
+
+      if (selectedUTC === null) {
+        slotsHeadEl.textContent = 'Pick a date to see times';
+        return;
+      }
+
+      slotsHeadEl.textContent = `${fmtFull.format(new Date(selectedUTC))} · ${TZ_LABEL}`;
+
+      SLOT_HOURS.forEach((hour) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'coffee__time';
+        btn.textContent = fmtHour(hour);
+        btn.setAttribute('aria-pressed', String(selectedHour === hour));
+        btn.addEventListener('click', () => {
+          selectedHour = hour;
+          timesEl
+            .querySelectorAll('.coffee__time')
+            .forEach((el) => el.setAttribute('aria-pressed', String(el === btn)));
+          renderConfirm();
+        });
+        timesEl.appendChild(btn);
+      });
+    }
+
+    function renderConfirm() {
+      if (selectedUTC === null || selectedHour === null) return;
+
+      const sel = new Date(selectedUTC);
+      const start = pacificToUtc(
+        sel.getUTCFullYear(),
+        sel.getUTCMonth() + 1,
+        sel.getUTCDate(),
+        selectedHour,
+        0
+      );
+      const end = new Date(start.getTime() + DURATION_MIN * 60_000);
+      const when = `${fmtFull.format(sel)} at ${fmtHour(selectedHour)} ${TZ_LABEL}`;
+
+      const subject = encodeURIComponent(`Coffee chat: ${when}`);
+      const body = encodeURIComponent(
+        `Hi Sara,\n\nI'd like to book a ${DURATION_MIN}-minute coffee chat on ${when}.\n\n` +
+          `A little about me and what I'd like to discuss:\n\n\n`
+      );
+
+      confirmEl.hidden = false;
+      confirmEl.innerHTML = `
+        <p class="coffee__summary">${when}</p>
+        <div class="coffee__actions">
+          <a class="btn btn--primary" href="mailto:${email}?subject=${subject}&body=${body}">Request this time</a>
+          <button type="button" class="btn btn--outline" data-ics>Add to calendar</button>
+        </div>
+        <p class="coffee__note">Opens your email client. Nothing is booked until Sara confirms.</p>
+      `;
+
+      confirmEl.querySelector<HTMLButtonElement>('[data-ics]')!.addEventListener('click', () => {
+        const ics = [
+          'BEGIN:VCALENDAR',
+          'VERSION:2.0',
+          'PRODID:-//sarajavanmardi.com//coffee//EN',
+          'CALSCALE:GREGORIAN',
+          'METHOD:PUBLISH',
+          'BEGIN:VEVENT',
+          `UID:coffee-${start.getTime()}@sarajavanmardi.com`,
+          `DTSTAMP:${icsStamp(new Date())}`,
+          `DTSTART:${icsStamp(start)}`,
+          `DTEND:${icsStamp(end)}`,
+          'SUMMARY:Coffee with Sara Javanmardi',
+          `DESCRIPTION:${DURATION_MIN}-minute coffee chat. Pending confirmation.`,
+          `ORGANIZER;CN=Sara Javanmardi:mailto:${email}`,
+          'END:VEVENT',
+          'END:VCALENDAR',
+        ].join('\r\n');
+
+        const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'coffee-with-sara.ics';
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    prevBtn.addEventListener('click', () => {
+      viewM -= 1;
+      if (viewM < 0) {
+        viewM = 11;
+        viewY -= 1;
+      }
+      renderMonth();
+    });
+
+    nextBtn.addEventListener('click', () => {
+      viewM += 1;
+      if (viewM > 11) {
+        viewM = 0;
+        viewY += 1;
+      }
+      renderMonth();
+    });
+
+    // ── Open / close ───────────────────────────────────────────────────────
+    document.querySelectorAll('[data-coffee-open]').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        dialog.showModal();
+      });
+    });
+
+    dialog.querySelector('[data-close]')!.addEventListener('click', () => dialog.close());
+
+    // Click on the backdrop (i.e. outside the dialog's own box) closes it
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+
+    renderMonth();
+    renderTimes();
+  }
+</script>
+
+{/*
+  is:global is required, not incidental: the calendar cells and time buttons are
+  built at runtime, so they never receive Astro's scoping attribute and scoped
+  rules would silently not apply. Every selector is "coffee" prefixed.
+*/}
+<style is:global>
+  .coffee {
+    width: min(46rem, calc(100vw - 2rem));
+    max-height: calc(100vh - 3rem);
+    /* reset.css sets `* { margin: 0 }`, which clobbers the UA stylesheet's
+       `margin: auto` that centres a modal dialog. Put it back. */
+    margin: auto;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
+    overflow: auto;
+  }
+
+  .coffee::backdrop {
+    background-color: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+  }
+
+  .coffee__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .coffee__title {
+    font-size: var(--text-xl);
+    margin-bottom: 0.1rem;
+  }
+
+  .coffee__sub {
+    font-size: var(--text-sm);
+    color: var(--color-text-subtle);
+  }
+
+  .coffee__close {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+  }
+
+  .coffee__close:hover {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+  }
+
+  /* Calendar left, times right */
+  .coffee__body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .coffee__cal {
+    padding: var(--space-md);
+    border-right: 1px solid var(--color-border);
+  }
+
+  .coffee__cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-sm);
+  }
+
+  .coffee__month {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  .coffee__nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+  }
+
+  .coffee__nav:hover:not(:disabled) {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .coffee__nav:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .coffee__dow,
+  .coffee__grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.15rem;
+  }
+
+  .coffee__dow {
+    margin-bottom: 0.25rem;
+  }
+
+  .coffee__dow span {
+    text-align: center;
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-text-subtle);
+  }
+
+  .coffee__day {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    aspect-ratio: 1;
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+  }
+
+  .coffee__day--blank {
+    pointer-events: none;
+  }
+
+  .coffee__day:disabled {
+    color: var(--color-text-subtle);
+    opacity: 0.45;
+    cursor: default;
+  }
+
+  .coffee__day:hover:not(:disabled) {
+    background-color: var(--color-surface);
+  }
+
+  .coffee__day[aria-pressed='true'] {
+    background-color: var(--color-accent);
+    color: var(--color-bg);
+  }
+
+  /* Availability marker */
+  .coffee__day-dot {
+    width: 0.3rem;
+    height: 0.3rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-accent);
+  }
+
+  .coffee__day[aria-pressed='true'] .coffee__day-dot {
+    background-color: var(--color-bg);
+  }
+
+  .coffee__legend {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: var(--space-sm);
+    font-size: var(--text-xs);
+    color: var(--color-text-subtle);
+  }
+
+  .coffee__legend-dot {
+    width: 0.3rem;
+    height: 0.3rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-accent);
+  }
+
+  /* Times */
+  .coffee__slots {
+    padding: var(--space-md);
+    min-width: 0;
+  }
+
+  .coffee__slots-head {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-sm);
+  }
+
+  .coffee__times {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(5.25rem, 1fr));
+    gap: 0.4rem;
+  }
+
+  .coffee__time {
+    padding: 0.45rem 0.4rem;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    transition: border-color var(--transition-fast), color var(--transition-fast),
+      background-color var(--transition-fast);
+  }
+
+  .coffee__time:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .coffee__time[aria-pressed='true'] {
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-bg);
+  }
+
+  .coffee__confirm {
+    margin-top: var(--space-md);
+    padding: var(--space-sm);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    background-color: var(--color-accent-muted);
+  }
+
+  .coffee__summary {
+    font-size: var(--text-base);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-sm);
+  }
+
+  .coffee__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .coffee__note {
+    font-size: var(--text-xs);
+    color: var(--color-text-subtle);
+    margin-top: var(--space-sm);
+  }
+
+  @media (max-width: 640px) {
+    .coffee__body {
+      grid-template-columns: 1fr;
+    }
+
+    .coffee__cal {
+      border-right: none;
+      border-bottom: 1px solid var(--color-border);
+    }
+  }
+</style>

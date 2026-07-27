@@ -1,0 +1,43 @@
+/* Theme tokens: switch via data-theme on <html> */
+
+:root,
+:root[data-theme="light"] {
+  --color-bg: #f9f9f7;
+  --color-surface: #f0f0ec;
+  --color-surface-elevated: #ffffff;
+  --color-text-primary: #1a1a18;
+  --color-text-muted: #5c5c58;
+  --color-text-subtle: #8a8a85;
+  --color-accent: #2d6a4f;
+  --color-accent-hover: #1b4332;
+  --color-accent-muted: rgba(45, 106, 79, 0.12);
+  --color-border: #e0e0da;
+  --color-border-strong: #c8c8c0;
+  --color-hero-overlay: rgba(249, 249, 247, 0.92);
+  --color-nav-bg: rgba(249, 249, 247, 0.85);
+  --color-shadow: rgba(26, 26, 24, 0.08);
+  --color-placeholder-bg: #e8e8e4;
+  --color-placeholder-text: #9a9a94;
+
+  --font-heading: 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  --color-bg: #111110;
+  --color-surface: #1c1c1a;
+  --color-surface-elevated: #252523;
+  --color-text-primary: #f5f5f2;
+  --color-text-muted: #a8a8a3;
+  --color-text-subtle: #787873;
+  --color-accent: #52b788;
+  --color-accent-hover: #74c69d;
+  --color-accent-muted: rgba(82, 183, 136, 0.15);
+  --color-border: #2e2e2c;
+  --color-border-strong: #3d3d3a;
+  --color-hero-overlay: rgba(17, 17, 16, 0.94);
+  --color-nav-bg: rgba(17, 17, 16, 0.88);
+  --color-shadow: rgba(0, 0, 0, 0.35);
+  --color-placeholder-bg: #2a2a28;
+  --color-placeholder-text: #6a6a65;
+}

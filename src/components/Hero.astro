@@ -1,0 +1,265 @@
+---
+import { Image } from 'astro:assets';
+import placeholderCutout from '../assets/images/placeholder-cutout.svg';
+
+// Booking comes first, it's the primary thing this page is for.
+// PLACEHOLDER: point this at the hosted CV, e.g. a Google Docs/Drive share
+// link set to "anyone with the link can view", the way reah.ai does it.
+const CV_URL = '#cv-placeholder';
+
+const links = [
+  { label: 'coffee', href: '#book', external: false, opensBooking: true },
+  { label: 'cv', href: CV_URL, external: true },
+  { label: 'contact', href: '#contact', external: false },
+  { label: 'linkedin', href: 'https://www.linkedin.com/in/sarajavanmardi/', external: true },
+];
+---
+
+<section class="hero" id="top">
+
+  {/* Layer 0: parallax background.
+      TODO: swap hero-bg.jpg for a real photo (office, abstract, atmospheric). */}
+  <div class="hero__bg" id="hero-bg" aria-hidden="true"></div>
+
+  {/* Layer 1: colour overlay, keeps the text readable and follows the theme */}
+  <div class="hero__overlay" aria-hidden="true"></div>
+
+  {/* Layer 2: content */}
+  <div class="hero__inner">
+    <div class="hero__content hero-enter">
+      <p class="hero__eyebrow">Principal Engineer, Google</p>
+      <h1 class="hero__name">Sara Javanmardi</h1>
+
+      <p class="hero__tagline">
+        Building Search infrastructure, ranking, and ML systems at scale for over a
+        decade. Previously <span class="hero__mark">Microsoft</span>, PhD from
+        <span class="hero__mark">UC Irvine</span>.
+      </p>
+
+      <nav class="hero__links" aria-label="Quick links">
+        {links.map((link) => (
+          <a
+            href={link.href}
+            class="hero__link"
+            {...(link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+            {...(link.opensBooking ? { 'data-coffee-open': '' } : {})}
+          >
+            {link.label}
+          </a>
+        ))}
+      </nav>
+    </div>
+
+    <div class="hero__cutout-wrap hero-enter--delay">
+      {/* TODO: replace with Sara's studio cutout PNG. The background must be
+          fully transparent so she stands over the parallax image. Portrait,
+          roughly 800x1200 at 2x. */}
+      <Image
+        src={placeholderCutout}
+        alt="Sara Javanmardi"
+        class="hero__cutout"
+        width={380}
+        height={420}
+      />
+    </div>
+  </div>
+</section>
+
+<script>
+  const bg = document.getElementById('hero-bg');
+  const hero = document.querySelector('.hero') as HTMLElement | null;
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (bg && hero && !reducedMotion) {
+    let ticking = false;
+
+    const updateParallax = () => {
+      const scrollY = window.scrollY;
+      // Only apply while hero is visible
+      if (scrollY < hero.offsetHeight) {
+        bg.style.transform = `translateY(${scrollY * 0.38}px)`;
+      }
+      ticking = false;
+    };
+
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        requestAnimationFrame(updateParallax);
+        ticking = true;
+      }
+    }, { passive: true });
+  }
+</script>
+
+<style>
+  .hero {
+    position: relative;
+    overflow: hidden;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-end;
+    padding: 0 var(--space-md) var(--space-lg);
+    /* Diagonal bottom edge: left side higher than right */
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 87%);
+  }
+
+  /* ── Parallax background ── */
+  .hero__bg {
+    position: absolute;
+    top: -25%;
+    left: 0;
+    right: 0;
+    height: 155%;
+    background-image: url('/images/hero-bg.jpg');
+    background-size: cover;
+    background-position: center center;
+    will-change: transform;
+    z-index: 0;
+  }
+
+  /* ── Overlay: solid on left for readability, fades to semi-transparent on right ── */
+  .hero__overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(
+      to right,
+      var(--color-bg) 0%,
+      var(--color-bg) 18%,
+      color-mix(in srgb, var(--color-bg) 78%, transparent) 52%,
+      color-mix(in srgb, var(--color-bg) 68%, transparent) 100%
+    );
+  }
+
+  /* ── Content grid ── */
+  .hero__inner {
+    position: relative;
+    z-index: 2;
+    max-width: var(--max-width);
+    margin: 0 auto;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-lg);
+    align-items: flex-end;
+    padding-top: var(--space-2xl);
+  }
+
+  /* ── Text content ── */
+  .hero__content {
+    padding-bottom: var(--space-2xl);
+  }
+
+  .hero__eyebrow {
+    font-size: var(--text-sm);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin-bottom: var(--space-xs);
+  }
+
+  .hero__name {
+    letter-spacing: -0.02em;
+    margin-bottom: var(--space-sm);
+    text-shadow: 0 2px 24px color-mix(in srgb, var(--color-bg) 60%, transparent);
+  }
+
+  .hero__tagline {
+    font-size: var(--text-lg);
+    line-height: 1.6;
+    max-width: 30rem;
+    margin-bottom: var(--space-lg);
+  }
+
+  .hero__mark {
+    color: var(--color-text-primary);
+    font-weight: 500;
+  }
+
+  /* ── Link row: spacing does the separating, no dividers ── */
+  .hero__links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--space-md);
+  }
+
+  .hero__link {
+    padding: 0.35rem 0;
+    font-size: var(--text-base);
+    color: var(--color-text-muted);
+    transition: color var(--transition-fast);
+  }
+
+  .hero__link:hover {
+    color: var(--color-accent);
+  }
+
+  /* ── Cutout ── */
+  .hero__cutout-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+  }
+
+  .hero__cutout {
+    display: block;
+    max-height: 72vh;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: bottom center;
+    /* drop-shadow respects transparency unlike box-shadow */
+    filter: drop-shadow(-8px 0 40px color-mix(in srgb, var(--color-bg) 55%, transparent));
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .hero {
+      align-items: center;
+      padding-bottom: var(--space-2xl);
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 94%);
+    }
+
+    /* On mobile the overlay is uniform, no directional gradient needed */
+    .hero__overlay {
+      background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+    }
+
+    .hero__inner {
+      grid-template-columns: 1fr;
+      text-align: center;
+      align-items: center;
+      gap: var(--space-lg);
+    }
+
+    .hero__content {
+      padding-bottom: 0;
+      order: 2;
+    }
+
+    .hero__tagline {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .hero__links {
+      justify-content: center;
+    }
+
+    .hero__cutout-wrap {
+      order: 1;
+    }
+
+    .hero__cutout {
+      max-height: 38vh;
+      filter: drop-shadow(0 8px 24px color-mix(in srgb, var(--color-bg) 55%, transparent));
+    }
+  }
+
+  @media (max-width: 560px) {
+    .hero__links {
+      gap: 0 var(--space-sm);
+    }
+  }
+</style>

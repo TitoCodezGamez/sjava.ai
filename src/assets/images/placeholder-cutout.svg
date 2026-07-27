@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 420" fill="none">
+  <!-- Waist-up cutout placeholder (transparent background) -->
+  <!-- Head -->
+  <ellipse cx="190" cy="100" rx="58" ry="68" fill="rgba(160,160,155,0.22)" stroke="rgba(160,160,155,0.45)" stroke-width="1.5"/>
+  <!-- Neck -->
+  <rect x="172" y="162" width="36" height="32" rx="4" fill="rgba(160,160,155,0.22)"/>
+  <!-- Shoulders / upper torso -->
+  <path d="M75 195 Q130 168 190 165 Q250 168 305 195 L318 410 L62 410 Z" fill="rgba(160,160,155,0.22)" stroke="rgba(160,160,155,0.4)" stroke-width="1.5"/>
+  <!-- Left arm -->
+  <path d="M78 202 L42 380 L70 386 L98 215" fill="rgba(160,160,155,0.18)" stroke="rgba(160,160,155,0.35)" stroke-width="1.5"/>
+  <!-- Right arm -->
+  <path d="M302 202 L338 380 L310 386 L282 215" fill="rgba(160,160,155,0.18)" stroke="rgba(160,160,155,0.35)" stroke-width="1.5"/>
+  <!-- Label in torso area -->
+  <text x="190" y="298" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="rgba(220,220,215,0.75)">PNG CUTOUT</text>
+  <text x="190" y="318" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="rgba(180,180,175,0.6)">waist-up, transparent bg</text>
+</svg>
