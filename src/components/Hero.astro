@@ -4,7 +4,7 @@ import { CV_COMPOSE, LINKEDIN } from '../config';
 // Booking comes first, it's the primary thing this page is for.
 const links = [
   { label: 'coffee', href: '#book', external: false, opensBooking: true },
-  { label: 'cv', href: CV_COMPOSE, external: true },
+  { label: 'cv', href: CV_COMPOSE, external: true, isCompose: true },
   { label: 'contact', href: '#contact', external: false },
   { label: 'linkedin', href: LINKEDIN, external: true },
 ];
@@ -39,6 +39,7 @@ const links = [
             class="hero__link"
             {...(link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
             {...(link.opensBooking ? { 'data-coffee-open': '' } : {})}
+            {...(link.isCompose ? { 'data-compose-cv': '' } : {})}
           >
             {link.label}
           </a>
@@ -68,6 +69,21 @@ const links = [
 </section>
 
 <script>
+  import { CV_REQUEST, composeUrl, isTouchPrimary } from '../config';
+
+  // The href ships as the Gmail web URL so it works without JS, which is right
+  // on desktop. On a touch device that page usually redirects to the inbox and
+  // loses the draft, so point it at the native mail app instead.
+  if (isTouchPrimary()) {
+    const cv = document.querySelector<HTMLAnchorElement>('[data-compose-cv]');
+    if (cv) {
+      cv.href = composeUrl(CV_REQUEST);
+      // mailto: hands off to another app; a new tab would be left behind blank.
+      cv.removeAttribute('target');
+      cv.removeAttribute('rel');
+    }
+  }
+
   const bg = document.getElementById('hero-bg');
   const hero = document.querySelector('.hero') as HTMLElement | null;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

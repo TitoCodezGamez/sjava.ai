@@ -47,7 +47,7 @@ import { EMAIL as email } from '../config';
 </dialog>
 
 <script>
-  import { CAL, gmailCompose } from '../config';
+  import { CAL, composeUrl } from '../config';
 
   // Real booking against Cal.com. Its v2 slots and bookings endpoints are
   // unauthenticated and CORS-open, so this runs straight from the static page
@@ -300,7 +300,7 @@ import { EMAIL as email } from '../config';
         slotsHeadEl.textContent = 'Could not load availability';
         timesEl.innerHTML =
           `<p class="coffee__error">Something went wrong reaching the calendar. ` +
-          `<a href="${gmailCompose({ subject: 'Coffee chat', body: 'Hi Sara,\n\nI would like to book a coffee chat.\n\n' })}" target="_blank" rel="noopener noreferrer">Email instead</a>.</p>`;
+          `<a href="${composeUrl({ subject: 'Coffee chat', body: 'Hi Sara,\n\nI would like to book a coffee chat.\n\n' })}" target="_blank" rel="noopener noreferrer">Email instead</a>.</p>`;
         return;
       }
       if (!selectedKey) {
@@ -419,7 +419,7 @@ import { EMAIL as email } from '../config';
           loadMonth();
         } catch {
           bookBtn.disabled = false;
-          const fallback = gmailCompose({
+          const fallback = composeUrl({
             subject: `Coffee chat: ${when}`,
             body: `Hi Sara,\n\nI would like to book a coffee chat on ${when}.\n\n${reason}\n\n${name}`,
           });

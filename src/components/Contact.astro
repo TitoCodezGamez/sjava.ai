@@ -50,7 +50,7 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
   // No backend on a static host, so the form hands off to Gmail's compose
   // window rather than POSTing. Swap this handler for a fetch() to Formspree
   // or a Pages Function if real server-side delivery is wanted later.
-  import { gmailCompose } from '../config';
+  import { composeUrl } from '../config';
 
   const form = document.querySelector<HTMLFormElement>('[data-contact-form]');
 
@@ -100,7 +100,7 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
         return;
       }
 
-      const url = gmailCompose({
+      const url = composeUrl({
         to: email,
         subject: subject.value.trim(),
         body: `${message.value.trim()}\n\n${name.value.trim()}`,

@@ -22,10 +22,12 @@ export const CAL = {
   bookingsApiVersion: '2024-08-13',
 } as const;
 
+type Compose = { to?: string; subject: string; body: string };
+
 /**
- * Gmail's compose URL rather than `mailto:`. A mailto does nothing visible for
- * anyone on webmail with no desktop client registered, which is most people,
- * and the failure is silent. This opens a pre-filled compose tab instead.
+ * Gmail's compose URL, used on desktop. A plain mailto: does nothing visible
+ * there for anyone on webmail with no mail client registered, and the failure
+ * is silent. This opens a pre-filled compose tab instead.
  *
  * Deliberately no `/u/0/` path segment: that pins Gmail to the first account a
  * visitor signed into, so anyone with a personal and a work account can end up
@@ -35,26 +37,42 @@ export const CAL = {
  * The tradeoff: a visitor not signed into Google lands on a Gmail login. The
  * plain address stays printed in the contact section as the escape hatch.
  */
-export const gmailCompose = ({
-  to = EMAIL,
-  subject,
-  body,
-}: {
-  to?: string;
-  subject: string;
-  body: string;
-}) =>
+
+export const gmailCompose = ({ to = EMAIL, subject, body }: Compose) =>
   'https://mail.google.com/mail/?view=cm&fs=1' +
   `&to=${encodeURIComponent(to)}` +
   `&su=${encodeURIComponent(subject)}` +
   `&body=${encodeURIComponent(body)}`;
 
+export const mailtoCompose = ({ to = EMAIL, subject, body }: Compose) =>
+  `mailto:${to}` +
+  `?subject=${encodeURIComponent(subject)}` +
+  `&body=${encodeURIComponent(body)}`;
+
 /**
- * The `cv` link does not point at a hosted file. It opens a pre-written
- * request addressed to Sara, so she stays in control of who receives the
- * resume and has the requester's details when she replies.
+ * Phones and tablets always have a default mail app registered, so mailto:
+ * hands off natively and lands in whatever they actually use, usually the
+ * Gmail app. Gmail's web compose is the reverse: fine on desktop, but on a
+ * phone it typically redirects to the inbox and drops the draft.
+ *
+ * Deliberately not the googlegmail:// deep link. That forces the Gmail app
+ * specifically, but does nothing at all when it is not installed, which is the
+ * silent failure we moved off mailto: to avoid in the first place.
+ *
+ * Primary pointer, not screen width: a touchscreen laptop still reports `fine`
+ * because its main input is a trackpad, so it correctly gets the desktop path.
  */
-export const CV_COMPOSE = gmailCompose({
+export const isTouchPrimary = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(pointer: coarse)').matches;
+
+/** Gmail web on desktop, the native mail app on touch devices. */
+export const composeUrl = (args: Compose) =>
+  isTouchPrimary() ? mailtoCompose(args) : gmailCompose(args);
+
+/** Subject and body for the CV request, shared by the link and its rewrite. */
+export const CV_REQUEST: Compose = {
   subject: 'Resume request',
   body: [
     'Hi Sara,',
@@ -68,4 +86,10 @@ export const CV_COMPOSE = gmailCompose({
     '[Name]',
     '[Phone]',
   ].join('\n'),
-});
+};
+
+/**
+ * Server-rendered href for the `cv` link, so it works before JS and without
+ * it. A client script swaps it for the mailto form on touch devices.
+ */
+export const CV_COMPOSE = gmailCompose(CV_REQUEST);
