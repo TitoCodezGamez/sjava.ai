@@ -40,8 +40,10 @@ export const CV_COMPOSE = gmailCompose({
     'I would like to receive a copy of your resume.',
     '',
     'Thanks,',
-    '[Your name]',
-    '[Your phone]',
-    '[Your email]',
+    // No email placeholder: they are sending from their own account, so the
+    // From header already carries it. Phone is the only contact detail the
+    // message would not otherwise include.
+    '[Name]',
+    '[Phone]',
   ].join('\n'),
 });
