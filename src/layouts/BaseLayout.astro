@@ -15,9 +15,6 @@ const {
 // astro.config.mjs, so these follow the domain automatically.
 const canonical = new URL(Astro.url.pathname, Astro.site);
 
-// TODO: add public/og.png at exactly 1200x630. The tags below are wired and
-// correct, but until that file exists shared links render with no preview
-// image. Crawlers do not accept SVG here, so it has to be a PNG or JPG.
 const ogImage = new URL('/og.png', Astro.site);
 ---
 
