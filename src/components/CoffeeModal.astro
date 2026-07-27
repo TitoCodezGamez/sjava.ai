@@ -365,23 +365,23 @@ import { EMAIL as email } from '../config';
        dialog painted in the top layer while the exit plays out. Browsers
        without support just pop it in and out, which is a fine floor. */
     opacity: 0;
-    transform: translateY(28px) scale(0.985);
+    transform: translateY(28px);
     transition:
-      opacity 320ms cubic-bezier(0.16, 1, 0.3, 1),
-      transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
-      overlay 320ms allow-discrete,
-      display 320ms allow-discrete;
+      opacity 460ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 460ms cubic-bezier(0.22, 1, 0.36, 1),
+      overlay 460ms allow-discrete,
+      display 460ms allow-discrete;
   }
 
   .coffee[open] {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 
   @starting-style {
     .coffee[open] {
       opacity: 0;
-      transform: translateY(28px) scale(0.985);
+      transform: translateY(28px);
     }
   }
 
@@ -389,10 +389,10 @@ import { EMAIL as email } from '../config';
     background-color: rgba(0, 0, 0, 0);
     backdrop-filter: blur(0px);
     transition:
-      background-color 320ms ease,
-      backdrop-filter 320ms ease,
-      overlay 320ms allow-discrete,
-      display 320ms allow-discrete;
+      background-color 460ms ease,
+      backdrop-filter 460ms ease,
+      overlay 460ms allow-discrete,
+      display 460ms allow-discrete;
   }
 
   .coffee[open]::backdrop {
