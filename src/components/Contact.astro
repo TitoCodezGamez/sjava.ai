@@ -13,7 +13,7 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
       </p>
     </header>
 
-    <form class="contact__form" data-contact-form novalidate data-reveal data-reveal-delay="1">
+    <form class="contact__form" data-contact-form data-email={email} novalidate data-reveal data-reveal-delay="1">
       <div class="contact__row">
         <div class="field">
           <label class="field__label" for="cf-name">Name</label>
@@ -48,15 +48,19 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
   </div>
 </section>
 
-<script define:vars={{ email }}>
-  // No backend on a static host, so the form composes a mailto: rather than
-  // POSTing. Swap this handler for a fetch() to Formspree or a Pages Function
-  // if real server-side delivery is wanted later.
-  const form = document.querySelector('[data-contact-form]');
+<script>
+  // No backend on a static host, so the form hands off to Gmail's compose
+  // window rather than POSTing. Swap this handler for a fetch() to Formspree
+  // or a Pages Function if real server-side delivery is wanted later.
+  import { gmailCompose } from '../config';
+
+  const form = document.querySelector<HTMLFormElement>('[data-contact-form]');
 
   if (form) {
-    const setError = (field, message) => {
-      const wrap = field.closest('.field');
+    const email = form.dataset.email || '';
+
+    const setError = (field: HTMLElement, message: string) => {
+      const wrap = field.closest('.field')!;
       wrap.classList.toggle('field--error', Boolean(message));
       let el = wrap.querySelector('.field__error');
       if (message) {
@@ -74,15 +78,16 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
     form.addEventListener('submit', (e) => {
       e.preventDefault();
 
-      const name = form.elements.name;
-      const from = form.elements.email;
-      const subject = form.elements.subject;
-      const message = form.elements.message;
+      const el = form.elements as any;
+      const name = el.name as HTMLInputElement;
+      const from = el.email as HTMLInputElement;
+      const subject = el.subject as HTMLInputElement;
+      const message = el.message as HTMLTextAreaElement;
 
-      // Validate before handing off, since a malformed mailto fails silently in
-      // some clients, which would look like the form just did nothing.
-      let firstBad = null;
-      const checks = [
+      // Validate before handing off: the compose tab opens either way, and a
+      // half-empty draft landing in Sara's inbox is worse than an inline error.
+      let firstBad: HTMLElement | null = null;
+      const checks: [HTMLElement, string][] = [
         [name, name.value.trim() ? '' : 'Please enter your name.'],
         [
           from,
@@ -106,13 +111,13 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
         return;
       }
 
-      const body = `${message.value.trim()}\n\n${name.value.trim()}\n${from.value.trim()}`;
-      const href =
-        `mailto:${email}` +
-        `?subject=${encodeURIComponent(subject.value.trim())}` +
-        `&body=${encodeURIComponent(body)}`;
+      const url = gmailCompose({
+        to: email,
+        subject: subject.value.trim(),
+        body: `${message.value.trim()}\n\n${name.value.trim()}\n${from.value.trim()}`,
+      });
 
-      window.location.href = href;
+      window.open(url, '_blank', 'noopener,noreferrer');
     });
   }
 </script>

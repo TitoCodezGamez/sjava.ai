@@ -47,6 +47,8 @@ import { EMAIL as email } from '../config';
 </dialog>
 
 <script>
+  import { gmailCompose } from '../config';
+
   // Classic 9–5: half-hour chats on the hour, 9am–4pm, weekdays only. Slots are
   // anchored to Pacific Time (where Sara is), not the visitor's clock, so a
   // booking made from London still lands inside her working day.
@@ -254,20 +256,22 @@ import { EMAIL as email } from '../config';
       const end = new Date(start.getTime() + DURATION_MIN * 60_000);
       const when = `${fmtFull.format(sel)} at ${fmtHour(selectedHour)} ${TZ_LABEL}`;
 
-      const subject = encodeURIComponent(`Coffee chat: ${when}`);
-      const body = encodeURIComponent(
-        `Hi Sara,\n\nI would like to book a ${DURATION_MIN}-minute coffee chat on ${when}.\n\n` +
-          `Briefly, who I am and what I would like to discuss:\n\n\n`
-      );
+      const compose = gmailCompose({
+        to: email,
+        subject: `Coffee chat: ${when}`,
+        body:
+          `Hi Sara,\n\nI would like to book a ${DURATION_MIN}-minute coffee chat on ${when}.\n\n` +
+          `Briefly, who I am and what I would like to discuss:\n\n\n`,
+      });
 
       confirmEl.hidden = false;
       confirmEl.innerHTML = `
         <p class="coffee__summary">${when}</p>
         <div class="coffee__actions">
-          <a class="btn btn--primary" href="mailto:${email}?subject=${subject}&body=${body}">Request this time</a>
+          <a class="btn btn--primary" href="${compose}" target="_blank" rel="noopener noreferrer">Request this time</a>
           <button type="button" class="btn btn--outline" data-ics>Add to calendar</button>
         </div>
-        <p class="coffee__note">Opens your email client. Nothing is booked until Sara confirms.</p>
+        <p class="coffee__note">Nothing is booked until Sara confirms.</p>
       `;
 
       confirmEl.querySelector<HTMLButtonElement>('[data-ics]')!.addEventListener('click', () => {

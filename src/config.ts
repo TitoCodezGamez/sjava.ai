@@ -6,23 +6,42 @@ export const EMAIL = 'hello@sjava.ai';
 export const LINKEDIN = 'https://www.linkedin.com/in/sarajavanmardi/';
 
 /**
+ * Gmail's compose URL rather than `mailto:`. A mailto does nothing visible for
+ * anyone on webmail with no desktop client registered, which is most people,
+ * and the failure is silent. This opens a pre-filled compose tab instead.
+ *
+ * The tradeoff: a visitor not signed into Google lands on a Gmail login. The
+ * plain address stays printed in the contact section as the escape hatch.
+ */
+export const gmailCompose = ({
+  to = EMAIL,
+  subject,
+  body,
+}: {
+  to?: string;
+  subject: string;
+  body: string;
+}) =>
+  'https://mail.google.com/mail/u/0/?fs=1&tf=cm' +
+  `&to=${encodeURIComponent(to)}` +
+  `&su=${encodeURIComponent(subject)}` +
+  `&body=${encodeURIComponent(body)}`;
+
+/**
  * The `cv` link does not point at a hosted file. It opens a pre-written
  * request addressed to Sara, so she stays in control of who receives the
  * resume and has the requester's details when she replies.
  */
-const CV_SUBJECT = 'Resume request';
-const CV_BODY = [
-  'Hi Sara,',
-  '',
-  'I would like to receive a copy of your resume.',
-  '',
-  'Thanks,',
-  '[Your name]',
-  '[Your phone]',
-  '[Your email]',
-].join('\n');
-
-export const CV_MAILTO =
-  `mailto:${EMAIL}` +
-  `?subject=${encodeURIComponent(CV_SUBJECT)}` +
-  `&body=${encodeURIComponent(CV_BODY)}`;
+export const CV_COMPOSE = gmailCompose({
+  subject: 'Resume request',
+  body: [
+    'Hi Sara,',
+    '',
+    'I would like to receive a copy of your resume.',
+    '',
+    'Thanks,',
+    '[Your name]',
+    '[Your phone]',
+    '[Your email]',
+  ].join('\n'),
+});

@@ -1,12 +1,12 @@
 ---
 import { Image } from 'astro:assets';
 import headshot from '../assets/images/headshot.jpeg';
-import { CV_MAILTO, LINKEDIN } from '../config';
+import { CV_COMPOSE, LINKEDIN } from '../config';
 
 // Booking comes first, it's the primary thing this page is for.
 const links = [
   { label: 'coffee', href: '#book', external: false, opensBooking: true },
-  { label: 'cv', href: CV_MAILTO, external: false },
+  { label: 'cv', href: CV_COMPOSE, external: true },
   { label: 'contact', href: '#contact', external: false },
   { label: 'linkedin', href: LINKEDIN, external: true },
 ];
