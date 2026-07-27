@@ -230,7 +230,13 @@ import { EMAIL as email } from '../config';
      */
     function crossfade(outgoing: HTMLElement, incoming: HTMLElement, top: number) {
       if (reduceMotion) {
+        // Swap instantly. The outgoing panel still has to be hidden here: the
+        // caller only does that on its non-animated path, so returning early
+        // used to leave the time list and the booking card on screen together.
         incoming.classList.remove('is-entering');
+        outgoing.classList.remove('is-leaving', 'is-entering');
+        outgoing.style.top = '';
+        outgoing.hidden = true;
         return;
       }
 
