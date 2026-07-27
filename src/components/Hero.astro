@@ -1,17 +1,14 @@
 ---
 import { Image } from 'astro:assets';
 import placeholderCutout from '../assets/images/placeholder-cutout.svg';
+import { CV_MAILTO, LINKEDIN } from '../config';
 
 // Booking comes first, it's the primary thing this page is for.
-// PLACEHOLDER: point this at the hosted CV, e.g. a Google Docs/Drive share
-// link set to "anyone with the link can view", the way reah.ai does it.
-const CV_URL = '#cv-placeholder';
-
 const links = [
   { label: 'coffee', href: '#book', external: false, opensBooking: true },
-  { label: 'cv', href: CV_URL, external: true },
+  { label: 'cv', href: CV_MAILTO, external: false },
   { label: 'contact', href: '#contact', external: false },
-  { label: 'linkedin', href: 'https://www.linkedin.com/in/sarajavanmardi/', external: true },
+  { label: 'linkedin', href: LINKEDIN, external: true },
 ];
 ---
 
