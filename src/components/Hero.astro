@@ -14,9 +14,12 @@ const links = [
 
 <section class="hero" id="top">
 
-  {/* Layer 0: parallax AI network artwork, generated as SVG so it stays sharp
-      at any size and costs one small request. */}
-  <div class="hero__bg" id="hero-bg" aria-hidden="true"></div>
+  {/* Layer 0: live network animation. Drifting nodes connect when close and
+      each new connection fires a brief glow, like synapses. Palette comes from
+      the --net-* theme tokens, so the toggle recolours it live. */}
+  <div class="hero__bg" id="hero-bg" aria-hidden="true">
+    <canvas data-net></canvas>
+  </div>
 
   {/* Layer 1: colour overlay, keeps the text readable and follows the theme */}
   <div class="hero__overlay" aria-hidden="true"></div>
@@ -70,6 +73,7 @@ const links = [
   const hero = document.querySelector('.hero') as HTMLElement | null;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // ── Parallax ─────────────────────────────────────────────────────────────
   if (bg && hero && !reducedMotion) {
     let ticking = false;
 
@@ -89,6 +93,226 @@ const links = [
       }
     }, { passive: true });
   }
+
+  // ── Network animation ────────────────────────────────────────────────────
+  // A sparse field of slowly drifting nodes. When two come within CONNECT_R a
+  // thread fades in, opacity scaled by proximity. The first frame a pair
+  // connects fires a one-off event: both endpoints bloom and the new thread
+  // starts brighter, decaying over about a second. Slow drift, no physics;
+  // the life is in the connecting.
+  const canvas = bg?.querySelector<HTMLCanvasElement>('[data-net]');
+
+  if (bg && canvas) {
+    const ctx = canvas.getContext('2d')!;
+
+    const CONNECT_R = 150;      // px within which a thread forms
+    const MARGIN = 80;          // wrap margin so nodes never pop at the edges
+    const LINE_MAX = 0.3;       // steady-state thread opacity at zero distance
+    const FLASH_BOOST = 0.5;    // extra thread opacity at the connection moment
+    const GLOW_DECAY = 2.4;     // 1/s, endpoint bloom fade
+    const FLASH_LIFE = 1.4;     // s, how long a connection event lingers
+
+    type Node = {
+      x: number; y: number;
+      vx: number; vy: number;
+      phase: number;            // breathing offset so the field shimmers unevenly
+      r: number;                // core radius
+      glow: number;             // 0..1, set to 1 when a connection fires
+    };
+
+    let W = 0;
+    let H = 0;
+    let nodes: Node[] = [];
+    let linked = new Set<string>();
+    const flashes = new Map<string, number>(); // pair key -> seconds since connect
+
+    // Palette comes from the theme tokens as bare R,G,B triplets; the canvas
+    // composes its own alpha per frame.
+    let colors = { line: '', node: '', glow: '' };
+    let glowSprite = document.createElement('canvas');
+
+    const readTheme = () => {
+      const s = getComputedStyle(document.documentElement);
+      colors = {
+        line: s.getPropertyValue('--net-line').trim(),
+        node: s.getPropertyValue('--net-node').trim(),
+        glow: s.getPropertyValue('--net-glow').trim(),
+      };
+      // Pre-render the halo once per theme: a radial falloff drawn per node
+      // per frame would burn the frame budget for an identical result.
+      glowSprite = document.createElement('canvas');
+      glowSprite.width = glowSprite.height = 64;
+      const g = glowSprite.getContext('2d')!;
+      const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, `rgba(${colors.glow}, 0.55)`);
+      grad.addColorStop(1, `rgba(${colors.glow}, 0)`);
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 64, 64);
+    };
+
+    const key = (i: number, j: number) => `${i}:${j}`;
+
+    const seed = () => {
+      // Density scales with area so phones are not overcrowded and big
+      // monitors are not empty. Capped: this is ambience, not a screensaver.
+      const count = Math.max(36, Math.min(90, Math.round((W * H) / 22000)));
+      nodes = Array.from({ length: count }, () => {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 8 + Math.random() * 10; // px/s, slow deliberate drift
+        return {
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          phase: Math.random() * Math.PI * 2,
+          r: 1.3 + Math.random() * 0.9,
+          glow: 0,
+        };
+      });
+
+      // Prime pairs already in range so the first frame does not fire every
+      // connection at once like a camera flash.
+      linked = new Set();
+      flashes.clear();
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x;
+          const dy = nodes[i].y - nodes[j].y;
+          if (dx * dx + dy * dy < CONNECT_R * CONNECT_R) linked.add(key(i, j));
+        }
+      }
+    };
+
+    const resize = () => {
+      // offsetWidth/Height, not getBoundingClientRect: the parallax transform
+      // must not leak into the canvas resolution.
+      W = bg.offsetWidth;
+      H = bg.offsetHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      seed();
+    };
+
+    const frame = (dt: number, t: number) => {
+      for (const n of nodes) {
+        n.x += n.vx * dt;
+        n.y += n.vy * dt;
+        if (n.x < -MARGIN) n.x += W + MARGIN * 2;
+        if (n.x > W + MARGIN) n.x -= W + MARGIN * 2;
+        if (n.y < -MARGIN) n.y += H + MARGIN * 2;
+        if (n.y > H + MARGIN) n.y -= H + MARGIN * 2;
+        n.glow *= Math.exp(-dt * GLOW_DECAY);
+      }
+
+      for (const [k, age] of flashes) {
+        const next = age + dt;
+        if (next > FLASH_LIFE) flashes.delete(k);
+        else flashes.set(k, next);
+      }
+
+      ctx.clearRect(0, 0, W, H);
+
+      // Threads: detection and drawing in one pass
+      const nextLinked = new Set<string>();
+      ctx.lineWidth = 1;
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x;
+          const dy = nodes[i].y - nodes[j].y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 >= CONNECT_R * CONNECT_R) continue;
+
+          const k = key(i, j);
+          nextLinked.add(k);
+          if (!linked.has(k)) {
+            // The connection moment: thread flashes, endpoints bloom
+            flashes.set(k, 0);
+            nodes[i].glow = 1;
+            nodes[j].glow = 1;
+          }
+
+          const closeness = 1 - Math.sqrt(d2) / CONNECT_R;
+          const flashAge = flashes.get(k);
+          const flash = flashAge === undefined ? 0 : Math.exp(-flashAge * 2.6);
+          const alpha = closeness * LINE_MAX + flash * FLASH_BOOST;
+
+          ctx.strokeStyle = `rgba(${colors.line}, ${alpha})`;
+          ctx.beginPath();
+          ctx.moveTo(nodes[i].x, nodes[i].y);
+          ctx.lineTo(nodes[j].x, nodes[j].y);
+          ctx.stroke();
+        }
+      }
+      linked = nextLinked;
+
+      // Nodes: soft halo sprite under a solid core, both breathing gently
+      for (const n of nodes) {
+        const breath = 0.5 + 0.5 * Math.sin(t * 0.9 + n.phase);
+        const haloR = 14 + 4 * breath + 14 * n.glow;
+        ctx.globalAlpha = 0.1 + 0.06 * breath + 0.5 * n.glow;
+        ctx.drawImage(glowSprite, n.x - haloR, n.y - haloR, haloR * 2, haloR * 2);
+        ctx.globalAlpha = 1;
+
+        ctx.fillStyle = `rgba(${colors.node}, ${0.5 + 0.4 * breath})`;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.r + n.glow * 0.9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
+    // ── Loop control: run only while the hero is on screen ────────────────
+    let rafId = 0;
+    let last = 0;
+    let running = false;
+
+    const loop = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.05); // clamp tab-switch jumps
+      last = now;
+      frame(dt, now / 1000);
+      if (running) rafId = requestAnimationFrame(loop);
+    };
+
+    const start = () => {
+      if (running || reducedMotion) return;
+      running = true;
+      last = performance.now();
+      rafId = requestAnimationFrame(loop);
+    };
+
+    const stop = () => {
+      running = false;
+      cancelAnimationFrame(rafId);
+    };
+
+    readTheme();
+    resize();
+
+    if (reducedMotion) {
+      // The look without the movement: one static frame of the same field
+      frame(0, 0);
+    } else {
+      new IntersectionObserver(
+        (entries) => (entries[0].isIntersecting ? start() : stop()),
+      ).observe(bg);
+    }
+
+    let resizeTimer = 0;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        resize();
+        if (reducedMotion) frame(0, 0);
+      }, 150);
+    });
+
+    // Recolour live when the theme toggle flips data-theme
+    new MutationObserver(() => {
+      readTheme();
+      if (reducedMotion) frame(0, 0);
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
 </script>
 
 <style>
@@ -103,18 +327,25 @@ const links = [
     clip-path: polygon(0 0, 100% 0, 100% 100%, 0 87%);
   }
 
-  /* ── Parallax background ── */
+  /* ── Parallax background: canvas animation over a theme-aware wash ── */
   .hero__bg {
     position: absolute;
     top: -25%;
     left: 0;
     right: 0;
     height: 155%;
-    background-image: url('../assets/images/ai-bg.svg');
-    background-size: cover;
-    background-position: center center;
+    /* Transparent on the left so the page colour carries through, deepening
+       toward the right. The canvas above it is fully transparent, which is
+       what keeps light mode light instead of a dark slab on a cream page. */
+    background: linear-gradient(to right, transparent 25%, var(--hero-tint) 100%);
     will-change: transform;
     z-index: 0;
+  }
+
+  .hero__bg canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
   /* ── Overlay: solid on left for readability, fades to semi-transparent on right ── */

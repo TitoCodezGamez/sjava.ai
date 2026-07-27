@@ -19,6 +19,14 @@
   --color-placeholder-bg: #e8e8e4;
   --color-placeholder-text: #9a9a94;
 
+  /* Hero network animation. Bare R,G,B triplets because the canvas composes
+     its own alpha per frame. Daylight diagram: deep greens on cream, with a
+     soft sage wash toward the right edge. */
+  --net-line: 45, 106, 79;
+  --net-node: 27, 67, 50;
+  --net-glow: 82, 183, 136;
+  --hero-tint: rgba(45, 106, 79, 0.14);
+
   --font-heading: 'Playfair Display', Georgia, serif;
   --font-body: 'Inter', system-ui, sans-serif;
 }
@@ -40,4 +48,10 @@
   --color-shadow: rgba(0, 0, 0, 0.35);
   --color-placeholder-bg: #2a2a28;
   --color-placeholder-text: #6a6a65;
+
+  /* Night sky: pale mint threads on near-black, deep forest wash right. */
+  --net-line: 176, 224, 197;
+  --net-node: 216, 240, 226;
+  --net-glow: 116, 198, 157;
+  --hero-tint: rgba(27, 67, 50, 0.5);
 }
