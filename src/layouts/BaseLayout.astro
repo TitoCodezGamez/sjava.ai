@@ -89,7 +89,11 @@ const ogImage = new URL('/og.png', Astro.site);
             }
           });
         },
-        { threshold: 0.1, rootMargin: '0px 0px -60px 0px' }
+        // No negative bottom margin: it creates a dead band at the foot of the
+        // viewport, and anything sitting inside it on a short page can never
+        // scroll clear of it, so it would stay invisible forever. That is what
+        // happened to the last line of the contact section.
+        { threshold: 0.15, rootMargin: '0px' }
       );
 
       document.querySelectorAll('[data-reveal]').forEach((el) => observer.observe(el));
