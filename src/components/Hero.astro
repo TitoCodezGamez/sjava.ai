@@ -1,6 +1,6 @@
 ---
 import { Image } from 'astro:assets';
-import placeholderCutout from '../assets/images/placeholder-cutout.svg';
+import headshot from '../assets/images/headshot.jpeg';
 import { CV_MAILTO, LINKEDIN } from '../config';
 
 // Booking comes first, it's the primary thing this page is for.
@@ -14,8 +14,8 @@ const links = [
 
 <section class="hero" id="top">
 
-  {/* Layer 0: parallax background.
-      TODO: swap hero-bg.jpg for a real photo (office, abstract, atmospheric). */}
+  {/* Layer 0: parallax AI network artwork, generated as SVG so it stays sharp
+      at any size and costs one small request. */}
   <div class="hero__bg" id="hero-bg" aria-hidden="true"></div>
 
   {/* Layer 1: colour overlay, keeps the text readable and follows the theme */}
@@ -31,8 +31,8 @@ const links = [
         {/* Keep each inline span on the same line as the word before it. Astro 7
             collapses a newline sitting between text and an inline element, which
             silently glues the words together. */}
-        Over a decade building Search infrastructure, ranking, and machine learning
-        systems at <span class="hero__mark">Google</span>.
+        Over a decade in machine learning and AI, with extensive experience taking
+        systems from research into production at <span class="hero__mark">Google</span>.
         Previously <span class="hero__mark">Microsoft</span>.
         PhD from <span class="hero__mark">UC Irvine</span>.
       </p>
@@ -51,16 +51,15 @@ const links = [
       </nav>
     </div>
 
-    <div class="hero__cutout-wrap hero-enter--delay">
-      {/* TODO: replace with Sara's studio cutout PNG. The background must be
-          fully transparent so she stands over the parallax image. Portrait,
-          roughly 800x1200 at 2x. */}
+    <div class="hero__portrait-wrap hero-enter--delay">
+      <div class="hero__portrait-ring" aria-hidden="true"></div>
       <Image
-        src={placeholderCutout}
+        src={headshot}
         alt="Sara Javanmardi"
-        class="hero__cutout"
-        width={380}
+        class="hero__portrait"
+        width={420}
         height={420}
+        densities={[1, 2]}
       />
     </div>
   </div>
@@ -111,7 +110,7 @@ const links = [
     left: 0;
     right: 0;
     height: 155%;
-    background-image: url('/images/hero-bg.jpg');
+    background-image: url('../assets/images/ai-bg.svg');
     background-size: cover;
     background-position: center center;
     will-change: transform;
@@ -123,12 +122,14 @@ const links = [
     position: absolute;
     inset: 0;
     z-index: 1;
+    /* Solid behind the copy, fully clear by the right edge. Anything less and
+       the cream page colour washes the network out to a grey smear. */
     background: linear-gradient(
       to right,
       var(--color-bg) 0%,
-      var(--color-bg) 18%,
-      color-mix(in srgb, var(--color-bg) 78%, transparent) 52%,
-      color-mix(in srgb, var(--color-bg) 68%, transparent) 100%
+      var(--color-bg) 26%,
+      color-mix(in srgb, var(--color-bg) 72%, transparent) 46%,
+      transparent 72%
     );
   }
 
@@ -197,21 +198,39 @@ const links = [
     color: var(--color-accent);
   }
 
-  /* ── Cutout ── */
-  .hero__cutout-wrap {
+  /* ── Circular portrait ── */
+  .hero__portrait-wrap {
+    position: relative;
     display: flex;
     justify-content: center;
-    align-items: flex-end;
+    align-items: center;
+    padding-bottom: var(--space-2xl);
   }
 
-  .hero__cutout {
+  /* Soft halo so the circle sits on the artwork instead of being pasted onto it */
+  .hero__portrait-ring {
+    position: absolute;
+    width: min(26rem, 62vw);
+    aspect-ratio: 1;
+    border-radius: var(--radius-full);
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--color-accent) 40%, transparent) 0%,
+      transparent 68%
+    );
+    filter: blur(10px);
+  }
+
+  .hero__portrait {
+    position: relative;
     display: block;
-    max-height: 72vh;
-    max-width: 100%;
-    object-fit: contain;
-    object-position: bottom center;
-    /* drop-shadow respects transparency unlike box-shadow */
-    filter: drop-shadow(-8px 0 40px color-mix(in srgb, var(--color-bg) 55%, transparent));
+    width: min(19rem, 50vw);
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: var(--radius-full);
+    border: 4px solid color-mix(in srgb, var(--color-bg) 80%, transparent);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.32);
   }
 
   /* ── Responsive ── */
@@ -222,9 +241,16 @@ const links = [
       clip-path: polygon(0 0, 100% 0, 100% 100%, 0 94%);
     }
 
-    /* On mobile the overlay is uniform, no directional gradient needed */
+    /* Stacked layout puts the portrait on top and the copy below, so the fade
+       runs vertically: artwork behind the portrait, solid behind the text. A
+       flat wash here just greys the network out without helping legibility. */
     .hero__overlay {
-      background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+      background: linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--color-bg) 15%, transparent) 0%,
+        color-mix(in srgb, var(--color-bg) 55%, transparent) 38%,
+        var(--color-bg) 60%
+      );
     }
 
     .hero__inner {
@@ -248,13 +274,17 @@ const links = [
       justify-content: center;
     }
 
-    .hero__cutout-wrap {
+    .hero__portrait-wrap {
       order: 1;
+      padding-bottom: 0;
     }
 
-    .hero__cutout {
-      max-height: 38vh;
-      filter: drop-shadow(0 8px 24px color-mix(in srgb, var(--color-bg) 55%, transparent));
+    .hero__portrait {
+      width: min(13rem, 45vw);
+    }
+
+    .hero__portrait-ring {
+      width: min(17rem, 58vw);
     }
   }
 
