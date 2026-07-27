@@ -432,9 +432,11 @@ const links = [
   }
 
   /* Soft halo so the circle sits on the artwork instead of being pasted onto it */
+  /* Desktop only: the max-width 900px block below sets its own size. Sized to
+     roughly 1.15x the portrait, the same proportion the stacked layout uses. */
   .hero__portrait-ring {
     position: absolute;
-    width: min(26rem, 62vw);
+    width: min(22rem, 62vw);
     aspect-ratio: 1;
     border-radius: var(--radius-full);
     background: radial-gradient(
