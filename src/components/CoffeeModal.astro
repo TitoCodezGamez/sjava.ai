@@ -93,6 +93,8 @@ import { EMAIL as email } from '../config';
     let slots: Record<string, string[]> = {};   // date key -> ISO start times
     let selectedKey: string | null = null;
     let selectedStart: string | null = null;
+    /** Survives stepping back to the time list, so nothing is retyped. */
+    const draft = { name: '', email: '', reason: '' };
     let loading = false;
     let loadError = false;
     /** -1 back, 1 forward, 0 none. Consumed once the new month has rendered. */
@@ -219,6 +221,15 @@ import { EMAIL as email } from '../config';
     function renderTimes() {
       timesEl.innerHTML = '';
 
+      // Once a time is picked the list steps aside so the panel is the only
+      // thing to deal with. The back control returns here.
+      timesEl.hidden = Boolean(selectedStart);
+      if (selectedStart) {
+        renderConfirm();
+        return;
+      }
+      confirmEl.hidden = true;
+
       if (loading) {
         slotsHeadEl.textContent = 'Loading availability…';
         return;
@@ -243,12 +254,9 @@ import { EMAIL as email } from '../config';
         btn.type = 'button';
         btn.className = 'coffee__time';
         btn.textContent = fmtTime.format(new Date(iso));
-        btn.setAttribute('aria-pressed', String(selectedStart === iso));
         btn.addEventListener('click', () => {
           selectedStart = iso;
-          timesEl.querySelectorAll('.coffee__time').forEach((el) =>
-            el.setAttribute('aria-pressed', String(el === btn)));
-          renderConfirm();
+          renderTimes();
         });
         timesEl.appendChild(btn);
       });
@@ -262,19 +270,31 @@ import { EMAIL as email } from '../config';
       if (!selectedStart) return;
       const when = `${fmtFull.format(new Date(selectedStart))} at ${fmtTime.format(new Date(selectedStart))} ${CAL.tzLabel}`;
 
+      // Values are read back out of `draft`, so stepping back to the times and
+      // returning does not wipe what they typed.
+      const esc = (s: string) =>
+        s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
       confirmEl.hidden = false;
       confirmEl.innerHTML = `
-        <p class="coffee__summary">${when}</p>
+        <div class="coffee__confirm-head">
+          <p class="coffee__summary">${when}</p>
+          <button type="button" class="coffee__back" data-bk-back aria-label="Back to times">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
+          </button>
+        </div>
         <div class="coffee__fields">
-          <input class="coffee__input" data-bk-name type="text" placeholder="Your name" autocomplete="name" />
-          <input class="coffee__input" data-bk-email type="email" placeholder="Your email" autocomplete="email" />
+          <input class="coffee__input" data-bk-name type="text" placeholder="Your name" autocomplete="name" value="${esc(draft.name)}" />
+          <input class="coffee__input" data-bk-email type="email" placeholder="Your email" autocomplete="email" value="${esc(draft.email)}" />
         </div>
         <input class="coffee__input coffee__input--wide" data-bk-reason type="text"
-               placeholder="What would you like to discuss?" />
+               placeholder="What would you like to discuss?" value="${esc(draft.reason)}" />
         <div class="coffee__actions">
           <button type="button" class="btn btn--primary" data-book>Confirm booking</button>
         </div>
-        <p class="coffee__note" data-bk-note>Cal.com will email you both to confirm.</p>
+        <p class="coffee__note" data-bk-note>Check your email for a confirmation.</p>
       `;
 
       const nameEl = confirmEl.querySelector<HTMLInputElement>('[data-bk-name]')!;
@@ -282,6 +302,15 @@ import { EMAIL as email } from '../config';
       const reasonEl = confirmEl.querySelector<HTMLInputElement>('[data-bk-reason]')!;
       const bookBtn = confirmEl.querySelector<HTMLButtonElement>('[data-book]')!;
       const noteEl = confirmEl.querySelector<HTMLElement>('[data-bk-note]')!;
+
+      nameEl.addEventListener('input', () => { draft.name = nameEl.value; });
+      emailEl.addEventListener('input', () => { draft.email = emailEl.value; });
+      reasonEl.addEventListener('input', () => { draft.reason = reasonEl.value; });
+
+      confirmEl.querySelector('[data-bk-back]')!.addEventListener('click', () => {
+        selectedStart = null;
+        renderTimes();
+      });
 
       bookBtn.addEventListener('click', async () => {
         const name = nameEl.value.trim();
@@ -313,7 +342,7 @@ import { EMAIL as email } from '../config';
 
           confirmEl.innerHTML = `
             <p class="coffee__summary">Requested: ${when}</p>
-            <p class="coffee__note">Check your inbox at ${email}. Sara confirms each one personally.</p>
+            <p class="coffee__note">Check your inbox at ${esc(email)} for a confirmation.</p>
           `;
           // That slot is spoken for; drop it so the grid cannot offer it twice
           cache.clear();
@@ -748,6 +777,31 @@ import { EMAIL as email } from '../config';
     .coffee__fields {
       grid-template-columns: 1fr;
     }
+  }
+
+  .coffee__confirm-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-sm);
+  }
+
+  .coffee__back {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    margin-top: -0.1rem;
+    border-radius: var(--radius-md);
+    color: var(--color-text-subtle);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+  }
+
+  .coffee__back:hover {
+    background-color: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+    color: var(--color-text-primary);
   }
 
   .coffee__summary {
