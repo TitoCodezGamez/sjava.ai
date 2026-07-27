@@ -495,7 +495,7 @@ import { EMAIL as email } from '../config';
   }
 
   .coffee::backdrop {
-    background-color: rgba(0, 0, 0, 0);
+    background-color: transparent;
     backdrop-filter: blur(0px);
     transition:
       background-color 460ms ease,
@@ -505,13 +505,13 @@ import { EMAIL as email } from '../config';
   }
 
   .coffee[open]::backdrop {
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--color-overlay);
     backdrop-filter: blur(6px);
   }
 
   @starting-style {
     .coffee[open]::backdrop {
-      background-color: rgba(0, 0, 0, 0);
+      background-color: transparent;
       backdrop-filter: blur(0px);
     }
   }
@@ -661,7 +661,7 @@ import { EMAIL as email } from '../config';
 
   .coffee__day[aria-pressed='true'] {
     background-color: var(--color-accent);
-    color: var(--color-bg);
+    color: var(--color-on-accent);
   }
 
   /* Availability marker */
@@ -673,7 +673,7 @@ import { EMAIL as email } from '../config';
   }
 
   .coffee__day[aria-pressed='true'] .coffee__day-dot {
-    background-color: var(--color-bg);
+    background-color: var(--color-on-accent);
   }
 
   .coffee__legend {
@@ -734,7 +734,7 @@ import { EMAIL as email } from '../config';
   .coffee__time[aria-pressed='true'] {
     background-color: var(--color-accent);
     border-color: var(--color-accent);
-    color: var(--color-bg);
+    color: var(--color-on-accent);
   }
 
   /* Swapping the time list for the booking card: a plain crossfade, no
@@ -842,7 +842,7 @@ import { EMAIL as email } from '../config';
 
   .coffee__error a,
   .coffee__note a {
-    color: var(--color-accent);
+    color: var(--color-link);
     text-decoration: underline;
     text-underline-offset: 2px;
   }
@@ -872,7 +872,7 @@ import { EMAIL as email } from '../config';
 
   .coffee__input:focus {
     outline: none;
-    border-color: var(--color-accent);
+    border-color: var(--color-focus);
   }
 
   @media (max-width: 480px) {

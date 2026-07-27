@@ -117,14 +117,14 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
   }
 
   .contact__inline-btn {
-    color: var(--color-accent);
+    color: var(--color-link);
     font: inherit;
     text-decoration: underline;
     text-underline-offset: 3px;
   }
 
   .contact__inline-btn:hover {
-    color: var(--color-accent-hover);
+    color: var(--color-link-hover);
   }
 
   .contact__form {
@@ -166,7 +166,7 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
 
   .field__input:focus {
     outline: none;
-    border-color: var(--color-accent);
+    border-color: var(--color-focus);
   }
 
   .field__input--area {
@@ -175,12 +175,12 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
   }
 
   .field--error .field__input {
-    border-color: #c0392b;
+    border-color: var(--color-danger);
   }
 
   .field__error {
     font-size: var(--text-xs);
-    color: #c0392b;
+    color: var(--color-danger);
   }
 
   .contact__submit {
@@ -197,7 +197,7 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
   }
 
   .contact__alt a {
-    color: var(--color-accent);
+    color: var(--color-link);
   }
 
   .contact__alt a:hover {

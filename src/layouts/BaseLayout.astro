@@ -133,9 +133,8 @@ const ogImage = new URL('/og.png', Astro.site);
     height: 2.5rem;
     line-height: 1;
     border-radius: var(--radius-full);
-    /* Green in light, white in dark. The icons stroke with currentColor, so
-       this one declaration recolours them. */
-    color: var(--color-accent);
+    /* Stroked with currentColor, so this one declaration recolours both. */
+    color: var(--color-icon);
     /* The hero artwork behind this is dark, so the chip needs its own contrast
        rather than relying on the page background. */
     background-color: color-mix(in srgb, var(--color-bg) 55%, transparent);
@@ -147,10 +146,6 @@ const ogImage = new URL('/og.png', Astro.site);
   .theme-toggle:hover {
     background-color: color-mix(in srgb, var(--color-bg) 80%, transparent);
     transform: scale(1.06);
-  }
-
-  :root[data-theme='dark'] .theme-toggle {
-    color: var(--color-text-primary);
   }
 
   .theme-toggle__icon {

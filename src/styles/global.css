@@ -93,7 +93,7 @@ p {
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--color-accent);
+  color: var(--color-text-accent);
   margin-bottom: var(--space-xs);
 }
 
@@ -120,7 +120,7 @@ p {
 
 .btn--primary {
   background-color: var(--color-accent);
-  color: var(--color-bg);
+  color: var(--color-on-accent);
 }
 
 .btn--primary:hover {
