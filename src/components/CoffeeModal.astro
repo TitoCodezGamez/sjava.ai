@@ -67,6 +67,7 @@ import { EMAIL as email } from '../config';
     const monthEl = dialog.querySelector<HTMLElement>('[data-month]')!;
     const timesEl = dialog.querySelector<HTMLElement>('[data-times]')!;
     const slotsHeadEl = dialog.querySelector<HTMLElement>('[data-slots-head]')!;
+    const slotsEl = dialog.querySelector<HTMLElement>('.coffee__slots')!;
     const confirmEl = dialog.querySelector<HTMLElement>('[data-confirm]')!;
     const prevBtn = dialog.querySelector<HTMLButtonElement>('[data-prev]')!;
     const nextBtn = dialog.querySelector<HTMLButtonElement>('[data-next]')!;
@@ -227,13 +228,12 @@ import { EMAIL as email } from '../config';
      * incoming one: stacking them instead would hold the height of whichever
      * is taller and leave a gap under the shorter card.
      */
-    function crossfade(outgoing: HTMLElement, incoming: HTMLElement) {
+    function crossfade(outgoing: HTMLElement, incoming: HTMLElement, top: number) {
       if (reduceMotion) {
         incoming.classList.remove('is-entering');
         return;
       }
 
-      const top = outgoing.offsetTop;
       outgoing.hidden = false;
       outgoing.style.top = `${top}px`;
       // Drop any entry class from when this panel arrived, so it is not
@@ -245,30 +245,51 @@ import { EMAIL as email } from '../config';
       void incoming.offsetWidth; // restart rather than let a repeat no-op
       incoming.classList.add('is-entering');
 
-      window.setTimeout(() => {
+      // Unpin on animationend rather than a matching setTimeout: the two start
+      // on different ticks, and cleaning up a frame early flashes the panel
+      // back to full opacity. The timer is only a fallback for the case where
+      // the animation never runs, such as reduced motion or a background tab.
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        outgoing.removeEventListener('animationend', finish);
         outgoing.classList.remove('is-leaving');
         outgoing.style.top = '';
         outgoing.hidden = true;
-      }, FADE_MS);
+      };
+      outgoing.addEventListener('animationend', finish);
+      window.setTimeout(finish, FADE_MS + 60);
     }
 
     // `animate` is only set by the two paths that swap the list and the panel,
     // so loading a month or changing date does not make things jump about.
     function renderTimes(animate = false) {
+      // Measure where the leaving panel sits NOW, before the state class below
+      // changes its margin. Reading it afterwards pins it to where it would be
+      // with the margin restored, which drops the card 24px as it starts to
+      // fade. Nothing has moved on screen yet at this point.
+      const leaving = animate ? (selectedStart ? timesEl : confirmEl) : null;
+      const leavingTop = leaving ? leaving.offsetTop : 0;
+
+      // Set before anything animates, so the card's spacing is final from its
+      // first frame and nothing shifts when the fade finishes.
+      slotsEl.classList.toggle('is-confirming', Boolean(selectedStart));
+
       // Once a time is picked the list steps aside so the panel is the only
       // thing to deal with. The back control returns here. The outgoing panel
       // keeps its content until the fade ends, so neither side is cleared
       // before it has finished animating.
       if (selectedStart) {
         renderConfirm();
-        if (animate) crossfade(timesEl, confirmEl);
+        if (animate) crossfade(timesEl, confirmEl, leavingTop);
         else timesEl.hidden = true;
         return;
       }
 
       timesEl.innerHTML = '';
       timesEl.hidden = false;
-      if (animate) crossfade(confirmEl, timesEl);
+      if (animate) crossfade(confirmEl, timesEl, leavingTop);
       else confirmEl.hidden = true;
 
       if (loading) {
@@ -760,6 +781,9 @@ import { EMAIL as email } from '../config';
     position: absolute;
     left: var(--space-md);
     right: var(--space-md);
+    /* `top` is set explicitly in JS, so any margin would stack on top of it and
+       shunt the pinned panel as it starts to fade. */
+    margin: 0;
     pointer-events: none;
     animation: coffee-fade-out 200ms ease both;
   }
@@ -781,9 +805,13 @@ import { EMAIL as email } from '../config';
     display: none;
   }
 
-  /* With the list hidden the card sits alone under the date, so its top margin
-     stacks on the heading's and leaves a hole. */
-  .coffee__times[hidden] + .coffee__confirm {
+  /* With the list gone the card sits alone under the date, so its top margin
+     stacks on the heading's and leaves a hole.
+     Keyed to a state class rather than `.coffee__times[hidden] +`, because the
+     list is deliberately still unhidden while it fades out: that selector went
+     false for the length of the crossfade and the card snapped up 24px the
+     moment it ended. */
+  .coffee__slots.is-confirming .coffee__confirm {
     margin-top: 0;
   }
 
