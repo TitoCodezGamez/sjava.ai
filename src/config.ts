@@ -6,6 +6,23 @@ export const EMAIL = 'hello@sjava.ai';
 export const LINKEDIN = 'https://www.linkedin.com/in/sarajavanmardi/';
 
 /**
+ * Cal.com booking. The v2 slots and bookings endpoints are unauthenticated and
+ * CORS-open, so a static page can drive real bookings with no backend and no
+ * secret to leak. Availability, duration and buffers all live in Cal.com, which
+ * is the source of truth: this site only renders what the API returns.
+ */
+export const CAL = {
+  username: 'sara-javanmardi',
+  eventSlug: 'coffee',
+  eventTypeId: 6459358,
+  timeZone: 'America/Los_Angeles',
+  tzLabel: 'PT',
+  /** Each endpoint pins its own version; they are not the same date. */
+  slotsApiVersion: '2024-09-04',
+  bookingsApiVersion: '2024-08-13',
+} as const;
+
+/**
  * Gmail's compose URL rather than `mailto:`. A mailto does nothing visible for
  * anyone on webmail with no desktop client registered, which is most people,
  * and the failure is silent. This opens a pre-filled compose tab instead.

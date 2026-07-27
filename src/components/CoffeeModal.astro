@@ -47,21 +47,22 @@ import { EMAIL as email } from '../config';
 </dialog>
 
 <script>
-  import { gmailCompose } from '../config';
+  import { CAL, gmailCompose } from '../config';
 
-  // Classic 9–5: half-hour chats on the hour, 9am–4pm, weekdays only. Slots are
-  // anchored to Pacific Time (where Sara is), not the visitor's clock, so a
-  // booking made from London still lands inside her working day.
-  const TIME_ZONE = 'America/Los_Angeles';
-  const TZ_LABEL = 'PT';
-  const SLOT_HOURS = [9, 10, 11, 12, 13, 14, 15, 16];
-  const DURATION_MIN = 30;
-  const HORIZON_DAYS = 60; // how far ahead bookings are offered
+  // Real booking against Cal.com. Its v2 slots and bookings endpoints are
+  // unauthenticated and CORS-open, so this runs straight from the static page
+  // with no backend and no secret. Cal.com owns availability, duration and
+  // buffers; this file only renders what the API returns, which means changing
+  // her hours in Cal.com changes the site with no redeploy.
+  //
+  // Date keys ("2026-07-28") come back as plain dates already in her timezone,
+  // so the calendar grid is built from strings and needs no timezone maths.
+  const API = 'https://api.cal.com/v2';
+  const HORIZON_DAYS = 60;
 
   const dialog = document.getElementById('coffee-modal') as HTMLDialogElement | null;
 
   if (dialog) {
-    const email = dialog.dataset.email || '';
     const gridEl = dialog.querySelector<HTMLElement>('[data-grid]')!;
     const monthEl = dialog.querySelector<HTMLElement>('[data-month]')!;
     const timesEl = dialog.querySelector<HTMLElement>('[data-times]')!;
@@ -70,110 +71,98 @@ import { EMAIL as email } from '../config';
     const prevBtn = dialog.querySelector<HTMLButtonElement>('[data-prev]')!;
     const nextBtn = dialog.querySelector<HTMLButtonElement>('[data-next]')!;
 
-    // ── Time zone helpers ──────────────────────────────────────────────────
-    /** Milliseconds to add to a Pacific wall-clock-as-UTC value to get true UTC. */
-    const tzOffsetMs = (date: Date) => {
-      const p = new Intl.DateTimeFormat('en-US', {
-        timeZone: TIME_ZONE,
-        hour12: false,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      })
-        .formatToParts(date)
-        .reduce<Record<string, string>>((a, x) => {
-          if (x.type !== 'literal') a[x.type] = x.value;
-          return a;
-        }, {});
-      const asUTC = Date.UTC(
-        Number(p.year),
-        Number(p.month) - 1,
-        Number(p.day),
-        Number(p.hour) % 24,
-        Number(p.minute),
-        Number(p.second)
-      );
-      return date.getTime() - asUTC;
-    };
-
-    /** Pacific wall-clock Y/M/D H:M → the true UTC instant. */
-    const pacificToUtc = (y: number, m: number, d: number, hh: number, mm: number) => {
-      const guess = Date.UTC(y, m - 1, d, hh, mm);
-      const first = tzOffsetMs(new Date(guess));
-      let ts = guess + first;
-      // A slot sitting across a DST boundary needs one correction pass
-      const second = tzOffsetMs(new Date(ts));
-      if (second !== first) ts = guess + second;
-      return new Date(ts);
-    };
-
-    /** Today's date as seen in Pacific Time. */
-    const pacificToday = () => {
-      const [y, m, d] = new Intl.DateTimeFormat('en-CA', {
-        timeZone: TIME_ZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      })
-        .format(new Date())
-        .split('-')
-        .map(Number);
-      return { y, m, d };
-    };
-
-    // ── Booking window ─────────────────────────────────────────────────────
-    const today = pacificToday();
-    const minUTC = Date.UTC(today.y, today.m - 1, today.d + 1); // from tomorrow
-    const maxUTC = Date.UTC(today.y, today.m - 1, today.d + HORIZON_DAYS);
-
-    const isAvailable = (utc: number) => {
-      if (utc < minUTC || utc > maxUTC) return false;
-      const dow = new Date(utc).getUTCDay();
-      return dow !== 0 && dow !== 6; // weekdays only
-    };
-
-    let viewY = today.y;
-    let viewM = today.m - 1; // 0-indexed month being displayed
-    let selectedUTC: number | null = null;
-    let selectedHour: number | null = null;
-
-    const fmtMonth = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'UTC',
-      month: 'long',
-      year: 'numeric',
-    });
+    const fmtMonth = new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', month: 'long', year: 'numeric' });
     const fmtFull = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'UTC',
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
+      timeZone: CAL.timeZone, weekday: 'long', month: 'long', day: 'numeric',
     });
+    const fmtTime = new Intl.DateTimeFormat('en-US', {
+      timeZone: CAL.timeZone, hour: 'numeric', minute: '2-digit',
+    });
+    const visitorTz = Intl.DateTimeFormat().resolvedOptions().timeZone || CAL.timeZone;
 
-    const fmtHour = (h: number) => {
-      const suffix = h < 12 ? 'am' : 'pm';
-      return `${h % 12 === 0 ? 12 : h % 12}:00 ${suffix}`;
-    };
+    /** Today as a plain YYYY-MM-DD in her timezone, for bounding the fetch. */
+    const todayKey = new Intl.DateTimeFormat('en-CA', {
+      timeZone: CAL.timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date());
 
     const pad = (n: number) => String(n).padStart(2, '0');
-    const icsStamp = (d: Date) =>
-      `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T` +
-      `${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;
+    const keyOf = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
 
-    // ── Calendar ───────────────────────────────────────────────────────────
+    let viewY = Number(todayKey.slice(0, 4));
+    let viewM = Number(todayKey.slice(5, 7)) - 1;
+    let slots: Record<string, string[]> = {};   // date key -> ISO start times
+    let selectedKey: string | null = null;
+    let selectedStart: string | null = null;
+    let loading = false;
+    let loadError = false;
+
+    // Cache per month so paging back and forth does not refetch
+    const cache = new Map<string, Record<string, string[]>>();
+
+    const horizonKey = (() => {
+      const d = new Date(`${todayKey}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() + HORIZON_DAYS);
+      return d.toISOString().slice(0, 10);
+    })();
+
+    async function loadMonth() {
+      const monthKey = `${viewY}-${pad(viewM + 1)}`;
+      if (cache.has(monthKey)) {
+        slots = cache.get(monthKey)!;
+        render();
+        return;
+      }
+
+      const daysInMonth = new Date(Date.UTC(viewY, viewM + 1, 0)).getUTCDate();
+      // Never ask for dates outside the bookable window
+      const from = keyOf(viewY, viewM, 1) < todayKey ? todayKey : keyOf(viewY, viewM, 1);
+      const to = keyOf(viewY, viewM, daysInMonth) > horizonKey ? horizonKey : keyOf(viewY, viewM, daysInMonth);
+
+      loading = true;
+      loadError = false;
+      render();
+
+      try {
+        if (from > to) {
+          slots = {};
+        } else {
+          const url =
+            `${API}/slots?eventTypeId=${CAL.eventTypeId}` +
+            `&start=${from}&end=${to}&timeZone=${encodeURIComponent(CAL.timeZone)}`;
+          const res = await fetch(url, { headers: { 'cal-api-version': CAL.slotsApiVersion } });
+          if (!res.ok) throw new Error(`slots ${res.status}`);
+          const json = await res.json();
+          slots = {};
+          for (const [day, list] of Object.entries((json.data || {}) as Record<string, { start: string }[]>)) {
+            if (list.length) slots[day] = list.map((s) => s.start);
+          }
+        }
+        cache.set(monthKey, slots);
+      } catch {
+        // Availability is unknown rather than empty: say so instead of showing
+        // an empty calendar that looks like she is fully booked.
+        slots = {};
+        loadError = true;
+      } finally {
+        loading = false;
+        render();
+      }
+    }
+
+    function render() {
+      renderMonth();
+      renderTimes();
+    }
+
     function renderMonth() {
-      const monthStart = Date.UTC(viewY, viewM, 1);
-      monthEl.textContent = fmtMonth.format(new Date(monthStart));
-
-      // Disable nav that would leave the bookable range entirely
-      prevBtn.disabled = Date.UTC(viewY, viewM, 0) < minUTC;
-      nextBtn.disabled = Date.UTC(viewY, viewM + 1, 1) > maxUTC;
+      monthEl.textContent = fmtMonth.format(new Date(Date.UTC(viewY, viewM, 1)));
+      prevBtn.disabled = loading || keyOf(viewY, viewM, 1) <= todayKey;
+      nextBtn.disabled = loading || keyOf(viewY, viewM + 1, 1) > horizonKey;
 
       gridEl.innerHTML = '';
+      gridEl.classList.toggle('is-loading', loading);
 
-      const startDow = new Date(monthStart).getUTCDay();
+      const startDow = new Date(Date.UTC(viewY, viewM, 1)).getUTCDay();
       const daysInMonth = new Date(Date.UTC(viewY, viewM + 1, 0)).getUTCDate();
 
       for (let i = 0; i < startDow; i++) {
@@ -183,31 +172,27 @@ import { EMAIL as email } from '../config';
       }
 
       for (let day = 1; day <= daysInMonth; day++) {
-        const utc = Date.UTC(viewY, viewM, day);
-        const open = isAvailable(utc);
+        const key = keyOf(viewY, viewM, day);
+        const open = Boolean(slots[key]?.length);
 
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'coffee__day';
         btn.disabled = !open;
-        btn.setAttribute('aria-pressed', String(selectedUTC === utc));
+        btn.setAttribute('aria-pressed', String(selectedKey === key));
         btn.innerHTML =
           `<span class="coffee__day-num">${day}</span>` +
           (open ? '<span class="coffee__day-dot" aria-hidden="true"></span>' : '');
 
         if (open) {
-          btn.setAttribute(
-            'aria-label',
-            `${fmtFull.format(new Date(utc))}, times available`
-          );
+          const count = slots[key].length;
+          btn.setAttribute('aria-label',
+            `${fmtFull.format(new Date(slots[key][0]))}, ${count} time${count === 1 ? '' : 's'} available`);
           btn.addEventListener('click', () => {
-            selectedUTC = utc;
-            selectedHour = null;
-            gridEl
-              .querySelectorAll('.coffee__day')
-              .forEach((el) => el.setAttribute('aria-pressed', String(el === btn)));
+            selectedKey = key;
+            selectedStart = null;
             confirmEl.hidden = true;
-            renderTimes();
+            render();
           });
         }
 
@@ -218,24 +203,35 @@ import { EMAIL as email } from '../config';
     function renderTimes() {
       timesEl.innerHTML = '';
 
-      if (selectedUTC === null) {
+      if (loading) {
+        slotsHeadEl.textContent = 'Loading availability…';
+        return;
+      }
+      if (loadError) {
+        slotsHeadEl.textContent = 'Could not load availability';
+        timesEl.innerHTML =
+          `<p class="coffee__error">Something went wrong reaching the calendar. ` +
+          `<a href="${gmailCompose({ subject: 'Coffee chat', body: 'Hi Sara,\n\nI would like to book a coffee chat.\n\n' })}" target="_blank" rel="noopener noreferrer">Email instead</a>.</p>`;
+        return;
+      }
+      if (!selectedKey) {
         slotsHeadEl.textContent = 'Select a date to see available times';
         return;
       }
 
-      slotsHeadEl.textContent = `${fmtFull.format(new Date(selectedUTC))} · ${TZ_LABEL}`;
+      const list = slots[selectedKey] || [];
+      slotsHeadEl.textContent = `${fmtFull.format(new Date(list[0]))} · ${CAL.tzLabel}`;
 
-      SLOT_HOURS.forEach((hour) => {
+      list.forEach((iso) => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'coffee__time';
-        btn.textContent = fmtHour(hour);
-        btn.setAttribute('aria-pressed', String(selectedHour === hour));
+        btn.textContent = fmtTime.format(new Date(iso));
+        btn.setAttribute('aria-pressed', String(selectedStart === iso));
         btn.addEventListener('click', () => {
-          selectedHour = hour;
-          timesEl
-            .querySelectorAll('.coffee__time')
-            .forEach((el) => el.setAttribute('aria-pressed', String(el === btn)));
+          selectedStart = iso;
+          timesEl.querySelectorAll('.coffee__time').forEach((el) =>
+            el.setAttribute('aria-pressed', String(el === btn)));
           renderConfirm();
         });
         timesEl.appendChild(btn);
@@ -243,100 +239,109 @@ import { EMAIL as email } from '../config';
     }
 
     function renderConfirm() {
-      if (selectedUTC === null || selectedHour === null) return;
-
-      const sel = new Date(selectedUTC);
-      const start = pacificToUtc(
-        sel.getUTCFullYear(),
-        sel.getUTCMonth() + 1,
-        sel.getUTCDate(),
-        selectedHour,
-        0
-      );
-      const end = new Date(start.getTime() + DURATION_MIN * 60_000);
-      const when = `${fmtFull.format(sel)} at ${fmtHour(selectedHour)} ${TZ_LABEL}`;
-
-      const compose = gmailCompose({
-        to: email,
-        subject: `Coffee chat: ${when}`,
-        body:
-          `Hi Sara,\n\nI would like to book a ${DURATION_MIN}-minute coffee chat on ${when}.\n\n` +
-          `Briefly, who I am and what I would like to discuss:\n\n\n`,
-      });
+      if (!selectedStart) return;
+      const when = `${fmtFull.format(new Date(selectedStart))} at ${fmtTime.format(new Date(selectedStart))} ${CAL.tzLabel}`;
 
       confirmEl.hidden = false;
       confirmEl.innerHTML = `
         <p class="coffee__summary">${when}</p>
-        <div class="coffee__actions">
-          <a class="btn btn--primary" href="${compose}" target="_blank" rel="noopener noreferrer">Request this time</a>
-          <button type="button" class="btn btn--outline" data-ics>Add to calendar</button>
+        <div class="coffee__fields">
+          <input class="coffee__input" data-bk-name type="text" placeholder="Your name" autocomplete="name" />
+          <input class="coffee__input" data-bk-email type="email" placeholder="Your email" autocomplete="email" />
         </div>
-        <p class="coffee__note">Nothing is booked until Sara confirms.</p>
+        <div class="coffee__actions">
+          <button type="button" class="btn btn--primary" data-book>Confirm booking</button>
+        </div>
+        <p class="coffee__note" data-bk-note>Cal.com will email you both to confirm.</p>
       `;
 
-      confirmEl.querySelector<HTMLButtonElement>('[data-ics]')!.addEventListener('click', () => {
-        const ics = [
-          'BEGIN:VCALENDAR',
-          'VERSION:2.0',
-          'PRODID:-//sjava.ai//coffee//EN',
-          'CALSCALE:GREGORIAN',
-          'METHOD:PUBLISH',
-          'BEGIN:VEVENT',
-          `UID:coffee-${start.getTime()}@sjava.ai`,
-          `DTSTAMP:${icsStamp(new Date())}`,
-          `DTSTART:${icsStamp(start)}`,
-          `DTEND:${icsStamp(end)}`,
-          'SUMMARY:Coffee with Sara Javanmardi',
-          `DESCRIPTION:${DURATION_MIN}-minute coffee chat. Pending confirmation.`,
-          `ORGANIZER;CN=Sara Javanmardi:mailto:${email}`,
-          'END:VEVENT',
-          'END:VCALENDAR',
-        ].join('\r\n');
+      const nameEl = confirmEl.querySelector<HTMLInputElement>('[data-bk-name]')!;
+      const emailEl = confirmEl.querySelector<HTMLInputElement>('[data-bk-email]')!;
+      const bookBtn = confirmEl.querySelector<HTMLButtonElement>('[data-book]')!;
+      const noteEl = confirmEl.querySelector<HTMLElement>('[data-bk-note]')!;
 
-        const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'coffee-with-sara.ics';
-        a.click();
-        URL.revokeObjectURL(url);
+      bookBtn.addEventListener('click', async () => {
+        const name = nameEl.value.trim();
+        const email = emailEl.value.trim();
+        if (!name || !emailEl.checkValidity() || !email) {
+          noteEl.textContent = 'Please add your name and a valid email.';
+          (!name ? nameEl : emailEl).focus();
+          return;
+        }
+
+        bookBtn.disabled = true;
+        noteEl.textContent = 'Booking…';
+
+        try {
+          const res = await fetch(`${API}/bookings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'cal-api-version': CAL.bookingsApiVersion },
+            body: JSON.stringify({
+              start: selectedStart,
+              eventTypeId: CAL.eventTypeId,
+              // Her timezone runs the calendar; the attendee's own zone is what
+              // Cal.com uses to word their confirmation email.
+              attendee: { name, email, timeZone: visitorTz, language: 'en' },
+            }),
+          });
+          if (!res.ok) throw new Error(`booking ${res.status}`);
+
+          confirmEl.innerHTML = `
+            <p class="coffee__summary">Requested: ${when}</p>
+            <p class="coffee__note">Check your inbox at ${email}. Sara confirms each one personally.</p>
+          `;
+          // That slot is spoken for; drop it so the grid cannot offer it twice
+          cache.clear();
+          selectedStart = null;
+          loadMonth();
+        } catch {
+          bookBtn.disabled = false;
+          const fallback = gmailCompose({
+            subject: `Coffee chat: ${when}`,
+            body: `Hi Sara,\n\nI would like to book a coffee chat on ${when}.\n\nBriefly, who I am and what I would like to discuss:\n\n\n${name}`,
+          });
+          noteEl.innerHTML =
+            `That did not go through. <a href="${fallback}" target="_blank" rel="noopener noreferrer">Send it as an email instead</a>.`;
+        }
       });
     }
 
     prevBtn.addEventListener('click', () => {
       viewM -= 1;
-      if (viewM < 0) {
-        viewM = 11;
-        viewY -= 1;
-      }
-      renderMonth();
+      if (viewM < 0) { viewM = 11; viewY -= 1; }
+      selectedKey = null;
+      selectedStart = null;
+      confirmEl.hidden = true;
+      loadMonth();
     });
 
     nextBtn.addEventListener('click', () => {
       viewM += 1;
-      if (viewM > 11) {
-        viewM = 0;
-        viewY += 1;
-      }
-      renderMonth();
+      if (viewM > 11) { viewM = 0; viewY += 1; }
+      selectedKey = null;
+      selectedStart = null;
+      confirmEl.hidden = true;
+      loadMonth();
     });
 
     // ── Open / close ───────────────────────────────────────────────────────
+    let loadedOnce = false;
     document.querySelectorAll('[data-coffee-open]').forEach((el) => {
       el.addEventListener('click', (e) => {
         e.preventDefault();
         dialog.showModal();
+        // Fetch on first open rather than page load: most visitors never open
+        // the dialog, and this keeps a third-party request off the main path.
+        if (!loadedOnce) { loadedOnce = true; loadMonth(); }
       });
     });
 
     dialog.querySelector('[data-close]')!.addEventListener('click', () => dialog.close());
-
-    // Click on the backdrop (i.e. outside the dialog's own box) closes it
     dialog.addEventListener('click', (e) => {
       if (e.target === dialog) dialog.close();
     });
 
-    renderMonth();
-    renderTimes();
+    render();
   }
 </script>
 
@@ -630,6 +635,56 @@ import { EMAIL as email } from '../config';
     border: 1px solid var(--color-accent);
     border-radius: var(--radius-md);
     background-color: var(--color-accent-muted);
+  }
+
+  /* Availability is loading: dim the grid rather than emptying it, so the
+     calendar does not flash between month changes. */
+  .coffee__grid.is-loading {
+    opacity: 0.4;
+    pointer-events: none;
+    transition: opacity 150ms ease;
+  }
+
+  .coffee__error {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    line-height: 1.5;
+  }
+
+  .coffee__error a,
+  .coffee__note a {
+    color: var(--color-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .coffee__fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+    margin-bottom: var(--space-sm);
+  }
+
+  .coffee__input {
+    min-width: 0;
+    padding: 0.45rem 0.6rem;
+    font: inherit;
+    font-size: var(--text-sm);
+    color: var(--color-text-primary);
+    background-color: var(--color-bg);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+  }
+
+  .coffee__input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  @media (max-width: 480px) {
+    .coffee__fields {
+      grid-template-columns: 1fr;
+    }
   }
 
   .coffee__summary {
