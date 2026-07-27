@@ -14,20 +14,18 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
     </header>
 
     <form class="contact__form" data-contact-form data-email={email} novalidate data-reveal data-reveal-delay="1">
+      {/* No email field: the message goes out from the sender's own account,
+          so their address is already in the From header. Asking for it again
+          only invites a reply-to that contradicts where the mail came from. */}
       <div class="contact__row">
         <div class="field">
           <label class="field__label" for="cf-name">Name</label>
           <input class="field__input" id="cf-name" name="name" type="text" required autocomplete="name" />
         </div>
         <div class="field">
-          <label class="field__label" for="cf-email">Email</label>
-          <input class="field__input" id="cf-email" name="email" type="email" required autocomplete="email" />
+          <label class="field__label" for="cf-subject">Subject</label>
+          <input class="field__input" id="cf-subject" name="subject" type="text" required />
         </div>
-      </div>
-
-      <div class="field">
-        <label class="field__label" for="cf-subject">Subject</label>
-        <input class="field__input" id="cf-subject" name="subject" type="text" required />
       </div>
 
       <div class="field">
@@ -80,7 +78,6 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
 
       const el = form.elements as any;
       const name = el.name as HTMLInputElement;
-      const from = el.email as HTMLInputElement;
       const subject = el.subject as HTMLInputElement;
       const message = el.message as HTMLTextAreaElement;
 
@@ -89,14 +86,6 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
       let firstBad: HTMLElement | null = null;
       const checks: [HTMLElement, string][] = [
         [name, name.value.trim() ? '' : 'Please enter your name.'],
-        [
-          from,
-          !from.value.trim()
-            ? 'Please enter your email address.'
-            : from.checkValidity()
-              ? ''
-              : 'Please enter a valid email address.',
-        ],
         [subject, subject.value.trim() ? '' : 'Please enter a subject.'],
         [message, message.value.trim() ? '' : 'Please enter a message.'],
       ];
@@ -114,7 +103,7 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
       const url = gmailCompose({
         to: email,
         subject: subject.value.trim(),
-        body: `${message.value.trim()}\n\n${name.value.trim()}\n${from.value.trim()}`,
+        body: `${message.value.trim()}\n\n${name.value.trim()}`,
       });
 
       window.open(url, '_blank', 'noopener,noreferrer');
