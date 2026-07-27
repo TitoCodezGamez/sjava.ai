@@ -39,7 +39,7 @@ const email = 'sarah.javanmardi@gmail.com';
 
     <!-- Right: times for the selected date -->
     <section class="coffee__slots" aria-label="Choose a time">
-      <p class="coffee__slots-head" data-slots-head>Pick a date to see times</p>
+      <p class="coffee__slots-head" data-slots-head>Select a date to see available times</p>
       <div class="coffee__times" data-times></div>
       <div class="coffee__confirm" data-confirm hidden></div>
     </section>
@@ -217,7 +217,7 @@ const email = 'sarah.javanmardi@gmail.com';
       timesEl.innerHTML = '';
 
       if (selectedUTC === null) {
-        slotsHeadEl.textContent = 'Pick a date to see times';
+        slotsHeadEl.textContent = 'Select a date to see available times';
         return;
       }
 
@@ -256,8 +256,8 @@ const email = 'sarah.javanmardi@gmail.com';
 
       const subject = encodeURIComponent(`Coffee chat: ${when}`);
       const body = encodeURIComponent(
-        `Hi Sara,\n\nI'd like to book a ${DURATION_MIN}-minute coffee chat on ${when}.\n\n` +
-          `A little about me and what I'd like to discuss:\n\n\n`
+        `Hi Sara,\n\nI would like to book a ${DURATION_MIN}-minute coffee chat on ${when}.\n\n` +
+          `Briefly, who I am and what I would like to discuss:\n\n\n`
       );
 
       confirmEl.hidden = false;
@@ -274,11 +274,11 @@ const email = 'sarah.javanmardi@gmail.com';
         const ics = [
           'BEGIN:VCALENDAR',
           'VERSION:2.0',
-          'PRODID:-//sarajavanmardi.com//coffee//EN',
+          'PRODID:-//sjava.ai//coffee//EN',
           'CALSCALE:GREGORIAN',
           'METHOD:PUBLISH',
           'BEGIN:VEVENT',
-          `UID:coffee-${start.getTime()}@sarajavanmardi.com`,
+          `UID:coffee-${start.getTime()}@sjava.ai`,
           `DTSTAMP:${icsStamp(new Date())}`,
           `DTSTART:${icsStamp(start)}`,
           `DTEND:${icsStamp(end)}`,

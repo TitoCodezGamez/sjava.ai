@@ -9,7 +9,8 @@ const linkedin = 'https://www.linkedin.com/in/sarajavanmardi/';
       <span class="section__label">Contact</span>
       <h2 class="section__title">Get in touch</h2>
       <p class="section__subtitle">
-        For advisory work, speaking, or press. If you'd rather just talk,
+        For advisory work, speaking engagements, and press enquiries. To arrange a
+        short conversation instead,
         <button type="button" class="contact__inline-btn" data-coffee-open>book a coffee</button>.
       </p>
     </header>
@@ -88,17 +89,17 @@ const linkedin = 'https://www.linkedin.com/in/sarajavanmardi/';
       // some clients, which would look like the form just did nothing.
       let firstBad = null;
       const checks = [
-        [name, name.value.trim() ? '' : 'Please add your name.'],
+        [name, name.value.trim() ? '' : 'Please enter your name.'],
         [
           from,
           !from.value.trim()
-            ? 'Please add your email.'
+            ? 'Please enter your email address.'
             : from.checkValidity()
               ? ''
-              : 'That email address looks incomplete.',
+              : 'Please enter a valid email address.',
         ],
-        [subject, subject.value.trim() ? '' : 'Please add a subject.'],
-        [message, message.value.trim() ? '' : 'Please add a message.'],
+        [subject, subject.value.trim() ? '' : 'Please enter a subject.'],
+        [message, message.value.trim() ? '' : 'Please enter a message.'],
       ];
 
       checks.forEach(([field, error]) => {
@@ -118,7 +119,7 @@ const linkedin = 'https://www.linkedin.com/in/sarajavanmardi/';
         `&body=${encodeURIComponent(body)}`;
 
       window.location.href = href;
-      hint.textContent = 'Your email client should have opened with the message ready.';
+      hint.textContent = 'Your email client should now be open with the message ready to send.';
     });
   }
 </script>
