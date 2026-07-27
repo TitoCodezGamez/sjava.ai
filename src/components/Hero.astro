@@ -12,6 +12,12 @@ const links = [
 ];
 ---
 
+<div class="hero-wrap">
+  {/* Same clip as the hero, nudged down a few pixels and filled dark, so the
+      sliver peeking out below reads as a crisp slanted rule along the edge.
+      Drawn outside the hero because the hero's own clip-path would cut it. */}
+  <div class="hero-edge" aria-hidden="true"></div>
+
 <section class="hero" id="top">
 
   {/* Layer 0: parallax AI network artwork, generated as SVG so it stays sharp
@@ -64,6 +70,7 @@ const links = [
     </div>
   </div>
 </section>
+</div>
 
 <script>
   const bg = document.getElementById('hero-bg');
@@ -92,8 +99,22 @@ const links = [
 </script>
 
 <style>
+  .hero-wrap {
+    position: relative;
+  }
+
+  .hero-edge {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-color: var(--color-text-primary);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 87%);
+    transform: translateY(5px);
+  }
+
   .hero {
     position: relative;
+    z-index: 1;
     overflow: hidden;
     min-height: 100vh;
     display: flex;
@@ -238,6 +259,11 @@ const links = [
     .hero {
       align-items: center;
       padding-bottom: var(--space-2xl);
+      clip-path: polygon(0 0, 100% 0, 100% 100%, 0 94%);
+    }
+
+    /* Keep the rule aligned with the shallower mobile slant */
+    .hero-edge {
       clip-path: polygon(0 0, 100% 0, 100% 100%, 0 94%);
     }
 
