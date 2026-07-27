@@ -102,7 +102,7 @@ const links = [
     const CONNECT_R = 150;      // px within which a thread forms
     const MARGIN = 80;          // wrap margin so nodes never pop at the edges
     const LINE_MAX = 0.42;      // steady-state thread opacity at zero distance
-    const FLASH_BOOST = 0.5;    // extra thread opacity at the connection moment
+    const FLASH_BOOST = 0.22;   // extra thread opacity at the connection moment
     const GLOW_DECAY = 2.4;     // 1/s, endpoint bloom fade
     const FLASH_LIFE = 1.4;     // s, how long a connection event lingers
 
@@ -246,16 +246,16 @@ const links = [
       // Nodes: soft halo sprite under a solid core, both breathing gently
       for (const n of nodes) {
         const breath = 0.5 + 0.5 * Math.sin(t * 0.45 + n.phase);
-        const haloR = 14 + 4 * breath + 14 * n.glow;
-        ctx.globalAlpha = Math.min(1, (0.1 + 0.06 * breath + 0.5 * n.glow) * halo);
+        const haloR = 14 + 4 * breath + 6 * n.glow;
+        ctx.globalAlpha = Math.min(1, (0.1 + 0.06 * breath + 0.2 * n.glow) * halo);
         ctx.drawImage(glowSprite, n.x - haloR, n.y - haloR, haloR * 2, haloR * 2);
         ctx.globalAlpha = 1;
 
         // Kept translucent so nodes sit in the field rather than punching
         // through it. Opaque cores read as specks on a light background.
-        ctx.fillStyle = `rgba(${colors.node}, ${0.3 + 0.28 * breath + 0.3 * n.glow})`;
+        ctx.fillStyle = `rgba(${colors.node}, ${0.3 + 0.28 * breath + 0.15 * n.glow})`;
         ctx.beginPath();
-        ctx.arc(n.x, n.y, n.r + n.glow * 0.9, 0, Math.PI * 2);
+        ctx.arc(n.x, n.y, n.r + n.glow * 0.45, 0, Math.PI * 2);
         ctx.fill();
       }
     };
