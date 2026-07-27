@@ -275,8 +275,8 @@ import { EMAIL as email } from '../config';
 
     // Note: this markup is a JS template string, not Astro template, so a
     // {/* ... */} comment inside it renders as literal text. Comment out here.
-    // The reason input maps to the event type's built-in "notes" booking field,
-    // so it lands in the Cal.com booking and the confirmation email.
+    // The reason input maps to the event type's required "title" field, which
+    // Cal.com labels "What is this meeting about?" and uses as the event title.
     function renderConfirm() {
       if (!selectedStart) return;
       // Full form for the emails and the success line; the card itself shows
@@ -304,11 +304,11 @@ import { EMAIL as email } from '../config';
           <input class="coffee__input" data-bk-email type="email" placeholder="Your email" autocomplete="email" value="${esc(draft.email)}" />
         </div>
         <input class="coffee__input coffee__input--wide" data-bk-reason type="text"
-               placeholder="What would you like to discuss?" value="${esc(draft.reason)}" />
+               placeholder="What is this meeting about?" value="${esc(draft.reason)}" />
         <div class="coffee__actions">
           <button type="button" class="btn btn--primary" data-book>Confirm booking</button>
         </div>
-        <p class="coffee__note" data-bk-note>Check your email for a confirmation.</p>
+        <p class="coffee__note" data-bk-note>Sara confirms each request by email.</p>
       `;
 
       const nameEl = confirmEl.querySelector<HTMLInputElement>('[data-bk-name]')!;
@@ -331,7 +331,7 @@ import { EMAIL as email } from '../config';
         const email = emailEl.value.trim();
         const reason = reasonEl.value.trim();
         if (!name || !email || !emailEl.checkValidity() || !reason) {
-          noteEl.textContent = 'Please add your name, a valid email, and what you would like to discuss.';
+          noteEl.textContent = 'Please add your name, a valid email, and what the meeting is about.';
           (!name ? nameEl : !email || !emailEl.checkValidity() ? emailEl : reasonEl).focus();
           return;
         }
@@ -349,14 +349,18 @@ import { EMAIL as email } from '../config';
               // Her timezone runs the calendar; the attendee's own zone is what
               // Cal.com uses to word their confirmation email.
               attendee: { name, email, timeZone: visitorTz, language: 'en' },
-              bookingFieldsResponses: { notes: reason },
+              // `title` is the event type's "What is this meeting about?"
+              // field and is required, so a booking without it is rejected.
+              // It also becomes the calendar event title, which is why the
+              // reason belongs here rather than in the notes textarea.
+              bookingFieldsResponses: { title: reason },
             }),
           });
           if (!res.ok) throw new Error(`booking ${res.status}`);
 
           confirmEl.innerHTML = `
             <p class="coffee__summary">Requested: ${when}</p>
-            <p class="coffee__note">Check your inbox at ${esc(email)} for a confirmation.</p>
+            <p class="coffee__note">Sara will confirm by email at ${esc(email)}.</p>
           `;
           // That slot is spoken for; drop it so the grid cannot offer it twice
           cache.clear();
