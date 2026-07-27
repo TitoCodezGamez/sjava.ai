@@ -5,9 +5,8 @@
  * adding one block here and touching nothing else.
  *
  * Tokens are named by ROLE, not by appearance: --color-link rather than
- * --color-green. Several roles point at the same value today (link and accent
- * are both the green), and that is the point. They can diverge later without
- * hunting through components to work out which greens meant "link".
+ * --color-green. Several roles share a value today (link and accent are both
+ * the green) so they can diverge later without auditing every usage.
  */
 
 :root,
@@ -24,9 +23,9 @@
   /* Accent-coloured text: eyebrow, section labels. Distinct from --color-accent
      so "green as a label" and "green as a fill" can move independently. */
   --color-text-accent: #2d6a4f;
-  /* Anything sitting ON an accent fill. Previously this borrowed --color-bg,
-     which happened to work but says nothing about intent and breaks the moment
-     a theme's accent stops contrasting with its page background. */
+  /* Anything sitting ON an accent fill. Kept separate from --color-bg so a
+     theme whose accent stops contrasting with its page background still has a
+     legible value here. */
   --color-on-accent: #f9f9f7;
 
   /* ── Accent (fills, active states) ────────────────────────── */

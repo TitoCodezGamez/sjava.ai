@@ -230,9 +230,8 @@ import { EMAIL as email } from '../config';
      */
     function crossfade(outgoing: HTMLElement, incoming: HTMLElement, top: number) {
       if (reduceMotion) {
-        // Swap instantly. The outgoing panel still has to be hidden here: the
-        // caller only does that on its non-animated path, so returning early
-        // used to leave the time list and the booking card on screen together.
+        // Swap instantly. The outgoing panel must still be hidden here: the
+        // caller only does that on its non-animated path.
         incoming.classList.remove('is-entering');
         outgoing.classList.remove('is-leaving', 'is-entering');
         outgoing.style.top = '';
@@ -406,10 +405,9 @@ import { EMAIL as email } from '../config';
               // Her timezone runs the calendar; the attendee's own zone is what
               // Cal.com uses to word their confirmation email.
               attendee: { name, email, timeZone: visitorTz, language: 'en' },
-              // `title` is the event type's "What is this meeting about?"
-              // field and is required, so a booking without it is rejected.
-              // It also becomes the calendar event title, which is why the
-              // reason belongs here rather than in the notes textarea.
+              // Maps to the event type's required "title" field, which Cal.com
+              // labels "What is this meeting about?" and uses as the calendar
+              // event title. A booking without it is rejected.
               bookingFieldsResponses: { title: reason },
             }),
           });

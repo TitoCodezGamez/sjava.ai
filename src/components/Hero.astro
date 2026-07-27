@@ -178,10 +178,8 @@ const links = [
 
     const key = (i: number, j: number) => `${i}:${j}`;
 
-    // Plain randomness is safe now that seeding runs exactly once per load.
-    // It was only a problem while resize reseeded, which made every scroll on
-    // mobile deal a new arrangement. Each visit gets its own field, and that
-    // field then holds still for the whole visit.
+    // Seeding runs once per load, so each visit gets its own field which then
+    // holds still for the whole visit.
     const rand = Math.random;
 
     const seed = () => {
@@ -243,10 +241,10 @@ const links = [
       canvas.height = Math.round(H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Seed once. Reseeding here was the bug: resize fires constantly on
-      // mobile as the address bar hides, so the field was dealt afresh every
-      // few pixels of scroll. Carry the existing field over instead, mapped
-      // onto the new box, so it stretches rather than reshuffles.
+      // Seed once only. Resize fires constantly on mobile as the address bar
+      // hides, so reseeding here would deal a new field every few pixels of
+      // scroll. Carry the existing one over, mapped onto the new box, so it
+      // stretches rather than reshuffles.
       if (!nodes.length) {
         seed();
       } else if (prevW > 0 && prevH > 0 && (W !== prevW || H !== prevH)) {

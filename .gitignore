@@ -20,3 +20,6 @@ pnpm-debug.log*
 
 # local editor/agent settings
 .claude/settings.local.json
+
+# editor/agent local config
+.claude/
