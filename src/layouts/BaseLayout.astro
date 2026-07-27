@@ -8,7 +8,7 @@ interface Props {
 
 const {
   title = 'Sara Javanmardi',
-  description = 'Sara Javanmardi is a Principal Engineer at Google DeepMind with over a decade in machine learning and AI, and extensive experience deploying systems at scale.',
+  description = 'Sara Javanmardi, Principal Engineer at Google DeepMind. Over a decade in machine learning and AI, with extensive experience in deployment.',
 } = Astro.props;
 
 // Absolute URLs, which social crawlers require. Astro.site comes from
@@ -116,11 +116,6 @@ const ogImage = new URL('/og.png', Astro.site);
         root.setAttribute('data-theme', e.matches ? 'dark' : 'light');
       });
     </script>
-    <footer class="site-footer">
-      <div class="site-footer__inner">
-        <p>&copy; {new Date().getFullYear()} Sara Javanmardi. All rights reserved.</p>
-      </div>
-    </footer>
   </body>
 </html>
 
@@ -168,18 +163,4 @@ const ogImage = new URL('/og.png', Astro.site);
     display: none;
   }
 
-  .site-footer {
-    padding: var(--space-md) var(--space-md) var(--space-lg);
-  }
-
-  .site-footer__inner {
-    max-width: var(--max-width);
-    margin: 0 auto;
-    text-align: center;
-  }
-
-  .site-footer p {
-    font-size: var(--text-sm);
-    color: var(--color-text-subtle);
-  }
 </style>

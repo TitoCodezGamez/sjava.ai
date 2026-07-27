@@ -37,9 +37,6 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
 
       <div class="contact__submit">
         <button type="submit" class="btn btn--primary">Send message</button>
-        <p class="contact__hint" data-form-hint>
-          Opens your email client with the message ready to send.
-        </p>
       </div>
     </form>
 
@@ -58,8 +55,6 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
   const form = document.querySelector('[data-contact-form]');
 
   if (form) {
-    const hint = form.querySelector('[data-form-hint]');
-
     const setError = (field, message) => {
       const wrap = field.closest('.field');
       wrap.classList.toggle('field--error', Boolean(message));
@@ -118,7 +113,6 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
         `&body=${encodeURIComponent(body)}`;
 
       window.location.href = href;
-      hint.textContent = 'Your email client should now be open with the message ready to send.';
     });
   }
 </script>
@@ -200,11 +194,6 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-sm) var(--space-md);
-  }
-
-  .contact__hint {
-    font-size: var(--text-xs);
-    color: var(--color-text-subtle);
   }
 
   .contact__alt {

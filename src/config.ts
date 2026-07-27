@@ -2,7 +2,7 @@
 // the contact form, and the booking dialog, so switching the address (for
 // example to cv@sjava.ai) is a one-line change here.
 
-export const EMAIL = 'sarah.javanmardi@gmail.com';
+export const EMAIL = 'hello@sjava.ai';
 export const LINKEDIN = 'https://www.linkedin.com/in/sarajavanmardi/';
 
 /**
