@@ -218,7 +218,16 @@ import { EMAIL as email } from '../config';
       }
     }
 
-    function renderTimes() {
+    /** Restart an entry animation that may already be on the element. */
+    function flash(el: HTMLElement) {
+      el.classList.remove('is-entering');
+      void el.offsetWidth;
+      el.classList.add('is-entering');
+    }
+
+    // `animate` is only set by the two paths that swap the list and the panel,
+    // so loading a month or changing date does not make things jump about.
+    function renderTimes(animate = false) {
       timesEl.innerHTML = '';
 
       // Once a time is picked the list steps aside so the panel is the only
@@ -226,9 +235,11 @@ import { EMAIL as email } from '../config';
       timesEl.hidden = Boolean(selectedStart);
       if (selectedStart) {
         renderConfirm();
+        if (animate) flash(confirmEl);
         return;
       }
       confirmEl.hidden = true;
+      if (animate) flash(timesEl);
 
       if (loading) {
         slotsHeadEl.textContent = 'Loading availability…';
@@ -256,7 +267,7 @@ import { EMAIL as email } from '../config';
         btn.textContent = fmtTime.format(new Date(iso));
         btn.addEventListener('click', () => {
           selectedStart = iso;
-          renderTimes();
+          renderTimes(true);
         });
         timesEl.appendChild(btn);
       });
@@ -268,7 +279,10 @@ import { EMAIL as email } from '../config';
     // so it lands in the Cal.com booking and the confirmation email.
     function renderConfirm() {
       if (!selectedStart) return;
+      // Full form for the emails and the success line; the card itself shows
+      // only the time, since the header directly above it already has the date.
       const when = `${fmtFull.format(new Date(selectedStart))} at ${fmtTime.format(new Date(selectedStart))} ${CAL.tzLabel}`;
+      const whenShort = `${fmtTime.format(new Date(selectedStart))} ${CAL.tzLabel}`;
 
       // Values are read back out of `draft`, so stepping back to the times and
       // returning does not wipe what they typed.
@@ -278,7 +292,7 @@ import { EMAIL as email } from '../config';
       confirmEl.hidden = false;
       confirmEl.innerHTML = `
         <div class="coffee__confirm-head">
-          <p class="coffee__summary">${when}</p>
+          <p class="coffee__summary">${whenShort}</p>
           <button type="button" class="coffee__back" data-bk-back aria-label="Back to times">
             <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" />
@@ -309,7 +323,7 @@ import { EMAIL as email } from '../config';
 
       confirmEl.querySelector('[data-bk-back]')!.addEventListener('click', () => {
         selectedStart = null;
-        renderTimes();
+        renderTimes(true);
       });
 
       bookBtn.addEventListener('click', async () => {
@@ -683,6 +697,30 @@ import { EMAIL as email } from '../config';
     background-color: var(--color-accent);
     border-color: var(--color-accent);
     color: var(--color-bg);
+  }
+
+  /* Swapping the time list for the booking card */
+  @keyframes coffee-panel-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .coffee__times.is-entering,
+  .coffee__confirm.is-entering {
+    animation: coffee-panel-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .coffee__times.is-entering,
+    .coffee__confirm.is-entering {
+      animation: none;
+    }
+  }
+
+  /* With the list hidden the card sits alone under the date, so its top margin
+     stacks on the heading's and leaves a hole. */
+  .coffee__times[hidden] + .coffee__confirm {
+    margin-top: 0;
   }
 
   .coffee__confirm {
