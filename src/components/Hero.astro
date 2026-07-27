@@ -353,8 +353,11 @@ const links = [
     overflow: hidden;
     min-height: 100vh;
     display: flex;
-    align-items: flex-end;
-    padding: 0 var(--space-md) var(--space-lg);
+    /* Centred, not bottom-anchored: the old flex-end was for the standing
+       cutout figure, and it left the circular portrait sunk in the bottom
+       third. The small bottom padding offsets the diagonal cut below. */
+    align-items: center;
+    padding: 0 var(--space-md) 6vh;
     /* Diagonal bottom edge: left side higher than right */
     clip-path: polygon(0 0, 100% 0, 100% 100%, 0 87%);
   }
@@ -406,13 +409,7 @@ const links = [
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-lg);
-    align-items: flex-end;
-    padding-top: var(--space-2xl);
-  }
-
-  /* ── Text content ── */
-  .hero__content {
-    padding-bottom: var(--space-2xl);
+    align-items: center;
   }
 
   .hero__eyebrow {
@@ -462,7 +459,6 @@ const links = [
     display: flex;
     justify-content: center;
     align-items: center;
-    padding-bottom: var(--space-2xl);
   }
 
   /* Soft halo so the circle sits on the artwork instead of being pasted onto it */
@@ -519,7 +515,6 @@ const links = [
     }
 
     .hero__content {
-      padding-bottom: 0;
       order: 2;
     }
 
