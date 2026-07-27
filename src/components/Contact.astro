@@ -9,8 +9,7 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
       <h2 class="section__title">Get in touch</h2>
       <p class="section__subtitle">
         For advisory work, speaking engagements, and press enquiries. To arrange a
-        short conversation instead,
-        <button type="button" class="contact__inline-btn" data-coffee-open>book a coffee</button>.
+        short conversation instead, <button type="button" class="contact__inline-btn" data-coffee-open>book a coffee</button>.
       </p>
     </header>
 
@@ -45,7 +44,8 @@ import { EMAIL as email, LINKEDIN as linkedin } from '../config';
     </form>
 
     <p class="contact__alt" data-reveal data-reveal-delay="2">
-      Or reach me directly at <a href={`mailto:${email}`}>{email}</a> ·
+      Or reach me directly at <a href={`mailto:${email}`}>{email}</a>
+      {' · '}
       <a href={linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
     </p>
   </div>
