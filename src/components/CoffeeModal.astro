@@ -95,6 +95,8 @@ import { EMAIL as email } from '../config';
     let selectedStart: string | null = null;
     let loading = false;
     let loadError = false;
+    /** -1 back, 1 forward, 0 none. Consumed once the new month has rendered. */
+    let pendingDir = 0;
 
     // Cache per month so paging back and forth does not refetch
     const cache = new Map<string, Record<string, string[]>>();
@@ -198,6 +200,20 @@ import { EMAIL as email } from '../config';
 
         gridEl.appendChild(btn);
       }
+
+      // Play the slide only once the real days are on screen. Firing it on the
+      // click would animate the dimmed loading grid and then snap when the
+      // fetch landed.
+      if (pendingDir && !loading) {
+        const cls = pendingDir > 0 ? 'is-from-right' : 'is-from-left';
+        gridEl.classList.remove('is-from-right', 'is-from-left');
+        void gridEl.offsetWidth; // restart the animation rather than let it no-op
+        gridEl.classList.add(cls);
+        monthEl.classList.remove('is-from-right', 'is-from-left');
+        void monthEl.offsetWidth;
+        monthEl.classList.add(cls);
+        pendingDir = 0;
+      }
     }
 
     function renderTimes() {
@@ -238,6 +254,10 @@ import { EMAIL as email } from '../config';
       });
     }
 
+    // Note: this markup is a JS template string, not Astro template, so a
+    // {/* ... */} comment inside it renders as literal text. Comment out here.
+    // The reason input maps to the event type's built-in "notes" booking field,
+    // so it lands in the Cal.com booking and the confirmation email.
     function renderConfirm() {
       if (!selectedStart) return;
       const when = `${fmtFull.format(new Date(selectedStart))} at ${fmtTime.format(new Date(selectedStart))} ${CAL.tzLabel}`;
@@ -249,6 +269,8 @@ import { EMAIL as email } from '../config';
           <input class="coffee__input" data-bk-name type="text" placeholder="Your name" autocomplete="name" />
           <input class="coffee__input" data-bk-email type="email" placeholder="Your email" autocomplete="email" />
         </div>
+        <input class="coffee__input coffee__input--wide" data-bk-reason type="text"
+               placeholder="What would you like to discuss?" />
         <div class="coffee__actions">
           <button type="button" class="btn btn--primary" data-book>Confirm booking</button>
         </div>
@@ -257,15 +279,17 @@ import { EMAIL as email } from '../config';
 
       const nameEl = confirmEl.querySelector<HTMLInputElement>('[data-bk-name]')!;
       const emailEl = confirmEl.querySelector<HTMLInputElement>('[data-bk-email]')!;
+      const reasonEl = confirmEl.querySelector<HTMLInputElement>('[data-bk-reason]')!;
       const bookBtn = confirmEl.querySelector<HTMLButtonElement>('[data-book]')!;
       const noteEl = confirmEl.querySelector<HTMLElement>('[data-bk-note]')!;
 
       bookBtn.addEventListener('click', async () => {
         const name = nameEl.value.trim();
         const email = emailEl.value.trim();
-        if (!name || !emailEl.checkValidity() || !email) {
-          noteEl.textContent = 'Please add your name and a valid email.';
-          (!name ? nameEl : emailEl).focus();
+        const reason = reasonEl.value.trim();
+        if (!name || !email || !emailEl.checkValidity() || !reason) {
+          noteEl.textContent = 'Please add your name, a valid email, and what you would like to discuss.';
+          (!name ? nameEl : !email || !emailEl.checkValidity() ? emailEl : reasonEl).focus();
           return;
         }
 
@@ -282,6 +306,7 @@ import { EMAIL as email } from '../config';
               // Her timezone runs the calendar; the attendee's own zone is what
               // Cal.com uses to word their confirmation email.
               attendee: { name, email, timeZone: visitorTz, language: 'en' },
+              bookingFieldsResponses: { notes: reason },
             }),
           });
           if (!res.ok) throw new Error(`booking ${res.status}`);
@@ -298,7 +323,7 @@ import { EMAIL as email } from '../config';
           bookBtn.disabled = false;
           const fallback = gmailCompose({
             subject: `Coffee chat: ${when}`,
-            body: `Hi Sara,\n\nI would like to book a coffee chat on ${when}.\n\nBriefly, who I am and what I would like to discuss:\n\n\n${name}`,
+            body: `Hi Sara,\n\nI would like to book a coffee chat on ${when}.\n\n${reason}\n\n${name}`,
           });
           noteEl.innerHTML =
             `That did not go through. <a href="${fallback}" target="_blank" rel="noopener noreferrer">Send it as an email instead</a>.`;
@@ -307,6 +332,7 @@ import { EMAIL as email } from '../config';
     }
 
     prevBtn.addEventListener('click', () => {
+      pendingDir = -1;
       viewM -= 1;
       if (viewM < 0) { viewM = 11; viewY -= 1; }
       selectedKey = null;
@@ -316,6 +342,7 @@ import { EMAIL as email } from '../config';
     });
 
     nextBtn.addEventListener('click', () => {
+      pendingDir = 1;
       viewM += 1;
       if (viewM > 11) { viewM = 0; viewY += 1; }
       selectedKey = null;
@@ -637,6 +664,37 @@ import { EMAIL as email } from '../config';
     background-color: var(--color-accent-muted);
   }
 
+  /* Month change: the new grid slides in from the side you travelled toward,
+     so forward and back read differently instead of both just fading. */
+  @keyframes coffee-from-right {
+    from { opacity: 0; transform: translateX(16px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  @keyframes coffee-from-left {
+    from { opacity: 0; transform: translateX(-16px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .coffee__grid.is-from-right,
+  .coffee__month.is-from-right {
+    animation: coffee-from-right 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .coffee__grid.is-from-left,
+  .coffee__month.is-from-left {
+    animation: coffee-from-left 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .coffee__grid.is-from-right,
+    .coffee__grid.is-from-left,
+    .coffee__month.is-from-right,
+    .coffee__month.is-from-left {
+      animation: none;
+    }
+  }
+
   /* Availability is loading: dim the grid rather than emptying it, so the
      calendar does not flash between month changes. */
   .coffee__grid.is-loading {
@@ -674,6 +732,11 @@ import { EMAIL as email } from '../config';
     background-color: var(--color-bg);
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-md);
+  }
+
+  .coffee__input--wide {
+    width: 100%;
+    margin-bottom: var(--space-sm);
   }
 
   .coffee__input:focus {
